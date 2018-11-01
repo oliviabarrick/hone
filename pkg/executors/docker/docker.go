@@ -7,12 +7,14 @@ import (
 	"log"
 	"os"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/api/types/container"
 	"github.com/justinbarrick/farm/pkg/config"
 )
 
 func Run(j config.Job) error {
+	log.Printf("===> Running job: %s\n", j.Name)
 	ctx := context.TODO()
 
 	d, err := docker.NewEnvClient()
@@ -20,11 +22,23 @@ func Run(j config.Job) error {
 		return err
 	}
 
-	reader, err := d.ImagePull(ctx, j.Image, types.ImagePullOptions{})
+	args := filters.NewArgs()
+	args.Add("reference", j.Image)
+
+	images, err := d.ImageList(ctx, types.ImageListOptions{
+		Filters: args,
+	})
 	if err != nil {
 		return err
 	}
-	io.Copy(os.Stdout, reader)
+
+	if len(images) < 1 {
+		reader, err := d.ImagePull(ctx, j.Image, types.ImagePullOptions{})
+		if err != nil {
+			return err
+		}
+		io.Copy(os.Stdout, reader)
+	}
 
 	env := []string{}
 	for name, value := range j.Env {
@@ -47,9 +61,9 @@ func Run(j config.Job) error {
 		return err
 	}
 
-	log.Printf("Started: %s\n", ctr.ID)
+	log.Printf("Started container: %s\n", ctr.ID[:8])
 
-	_, err = d.ContainerWait(ctx, ctr.ID, container.WaitConditionNotRunning)
+	_, err = d.ContainerWait(ctx, ctr.ID)
 	if err != nil {
 		return err
 	}
@@ -59,5 +73,6 @@ func Run(j config.Job) error {
 		return err
 	}
 	io.Copy(os.Stdout, out)
+	log.Printf("===> Job completed: %s\n", j.Name)
 	return nil
 }

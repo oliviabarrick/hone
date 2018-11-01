@@ -3,6 +3,8 @@ package graph
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 	"github.com/justinbarrick/farm/pkg/config"
@@ -10,18 +12,29 @@ import (
 
 type JobGraph struct {
 	graph *simple.DirectedGraph
-	root *config.Job
+}
+
+type Node struct {
+	Job  *config.Job
+	Done chan bool
+}
+
+func NewNode(job *config.Job) *Node {
+	return &Node{
+		Job: job,
+		Done: make(chan bool),
+	}
+}
+
+func (n Node) ID() int64 {
+	return n.Job.ID()
 }
 
 func NewJobGraph(jobs map[string]*config.Job) JobGraph {
 	graph := JobGraph{
 		graph: simple.NewDirectedGraph(),
-		root: &config.Job{
-			Name: "ROOT",
-		},
 	}
 
-	graph.graph.AddNode(graph.root)
 	graph.BuildGraph(jobs)
 	return graph
 }
@@ -29,24 +42,19 @@ func NewJobGraph(jobs map[string]*config.Job) JobGraph {
 func (j *JobGraph) BuildGraph(jobs map[string]*config.Job) {
 	for _, job := range jobs {
 		if j.graph.Node(job.ID()) == nil {
-			j.graph.AddNode(job)
+			j.graph.AddNode(NewNode(job))
 		}
-
-/*
-		if len(job.Deps) == 0 {
-			fmt.Printf("%s -> %s\n", j.root.Name, job.Name)
-			j.graph.SetEdge(simple.Edge{
-				T: job,
-				F: j.root,
-			})
-		}
-*/
 
 		for _, dep := range job.Deps {
-//			fmt.Printf("%s -> %s\n", jobs[dep].Name, job.Name)
+			depJob := jobs[dep]
+
+			if j.graph.Node(depJob.ID()) == nil {
+				j.graph.AddNode(NewNode(depJob))
+			}
+
 			j.graph.SetEdge(simple.Edge{
-				T: job,
-				F: jobs[dep],
+				T: j.graph.Node(job.ID()),
+				F: j.graph.Node(depJob.ID()),
 			})
 		}
 	}
@@ -64,15 +72,26 @@ func (j *JobGraph) ResolveTarget(target string, callback func (config.Job) error
 		return err
 	}
 
+	var wg sync.WaitGroup
+
 	for _, node := range sorted {
 		if ! topo.PathExistsIn(j.graph, node, targetNode) {
 			continue
 		}
 
-		if err := callback(*node.(*config.Job)); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(n *Node) {
+			defer close(n.Done)
+			defer wg.Done()
+
+			for _, node := range graph.NodesOf(j.graph.To(n.ID())) {
+				_ = <-node.(*Node).Done
+			}
+
+			callback(*n.Job)
+		}(node.(*Node))
 	}
 
+	wg.Wait()
 	return nil
 }

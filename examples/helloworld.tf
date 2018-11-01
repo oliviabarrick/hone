@@ -28,7 +28,7 @@ job "build" {
     input = "./cmd/farm.go"
     output = "farm"
 
-    shell = "go build -o ${build.output} ${build.input}"
+    shell = "go build -v -o ${build.output} ${build.input}"
 }
 
 job "hello" {
@@ -36,7 +36,7 @@ job "hello" {
 
     output = "hello"
 
-    shell = "echo lol > ${hello.output}"
+    shell = "echo lol"
 }
 
 job "world" {

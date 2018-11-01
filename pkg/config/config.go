@@ -2,6 +2,8 @@ package config
 
 import (
 	"io/ioutil"
+	"strings"
+	"fmt"
 	"github.com/hashicorp/hcl"
 	"hash/crc32"
 )
@@ -40,9 +42,10 @@ func Unmarshal(fname string) (map[string]*Job, error) {
 
 	for name, job := range jobs["job"] {
 		job.Name = name
+		if ! strings.Contains(job.Image, ":") {
+			job.Image = fmt.Sprintf("%s:latest", job.Image)
+		}
 	}
 
 	return jobs["job"], nil
 }
-
-
