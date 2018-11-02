@@ -51,9 +51,9 @@ job "world" {
 
     deps = ["hello"]
 
-    outputs = {
-        "mine" = "lol"
-    }
+    outputs = [
+        "lol"
+    ]
 
     shell = <<EOF
 echo world > lol

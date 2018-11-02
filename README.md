@@ -1,4 +1,4 @@
-Design:
+# Design
 
 * Remote state, farm calculates a desired build state by creating a DAG of build resources
   using the paths and hashes of input files. This state is stored in a remote store so that
@@ -13,14 +13,24 @@ Design:
 * Dependencies can be defined implicitly or explicitly.
 * CRUD handlers are easy to implement.
 
-Building:
+# Building
 
 ```
 GO111MODULE=on go get -u github.com/justinbarrick/farm
 ```
 
-Running:
+# Running
 
 ```
 farm examples/helloworld.tf build
 ```
+
+# Caching
+
+By default it uses a local file cache. To override this and use S3 as a cache,
+set:
+
+* `S3_BUCKET`: the bucket to use.
+* `S3_URL`: your S3 URL.
+* `S3_ACCESS_KEY`: your access token.
+* `S3_SECRET_KEY`: your secret token.

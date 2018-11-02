@@ -16,7 +16,6 @@ type CacheEntry struct {
 }
 
 type Cache interface {
-	Copy(src, dst string) error
 	Get(entry CacheEntry) error
 	Set(filePath string) (CacheEntry, error)
 	LoadCacheManifest(cacheKey string) ([]CacheEntry, error)
@@ -119,6 +118,7 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 
 		cacheManifest, err := c.LoadCacheManifest(cacheKey)
 		if err != nil {
+			logger.Log(job, "????\n")
 			return err
 		}
 

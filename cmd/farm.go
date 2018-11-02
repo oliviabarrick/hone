@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/justinbarrick/farm/pkg/cache"
+	"github.com/justinbarrick/farm/pkg/cache/s3"
 	"github.com/justinbarrick/farm/pkg/cache/file"
 	"github.com/justinbarrick/farm/pkg/config"
 	"github.com/justinbarrick/farm/pkg/executors/docker"
@@ -17,7 +18,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	c, err := filecache.NewFileCache(".farm_cache")
+	var c cache.Cache
+
+	bucket := os.Getenv("S3_BUCKET")
+	endpoint := os.Getenv("S3_URL")
+	accessKey := os.Getenv("S3_ACCESS_KEY")
+	secretKey := os.Getenv("S3_SECRET_KEY")
+	if endpoint != "" && accessKey != "" && secretKey != "" && bucket != "" {
+		c, err = s3cache.NewS3Cache(bucket, endpoint, accessKey, secretKey)
+	} else {
+		c, err = filecache.NewFileCache(".farm_cache")
+	}
 	if err != nil {
 		log.Fatal(err)
 	}

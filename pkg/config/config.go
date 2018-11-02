@@ -27,7 +27,7 @@ type Job struct {
 	Shell   string             `hcl:"shell"`
 	Inputs  *[]string          `hcl:"inputs"`
 	Input   *string            `hcl:"input"`
-	Outputs *map[string]string `hcl:"outputs"`
+	Outputs *[]string `hcl:"outputs"`
 	Output  *string            `hcl:"output"`
 	Env     *map[string]string `hcl:"env"`
 	Deps    *[]string          `hcl:"deps"`
@@ -61,6 +61,22 @@ func Unmarshal(fname string) (map[string]*Job, error) {
 		if !strings.Contains(job.Image, ":") {
 			job.Image = fmt.Sprintf("%s:latest", job.Image)
 		}
+
+		if job.Inputs == nil {
+			job.Inputs = &[]string{}
+		}
+		if job.Input != nil {
+			*job.Inputs = append(*job.Inputs, *job.Input)
+		}
+
+		if job.Outputs == nil {
+			job.Outputs = &[]string{}
+		}
+		if job.Output != nil {
+			*job.Outputs = append(*job.Outputs, *job.Output)
+		}
+
+
 		jobsMap[job.Name] = job
 	}
 
