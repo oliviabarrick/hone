@@ -6,6 +6,8 @@ import (
 	"github.com/justinbarrick/farm/pkg/config"
 	"github.com/justinbarrick/farm/pkg/executors/docker"
 	"github.com/justinbarrick/farm/pkg/graph"
+	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/justinbarrick/farm/pkg/cache"
 )
 
 func main() {
@@ -15,9 +17,9 @@ func main() {
 	}
 
 	g := graph.NewJobGraph(jobs)
-	if err := g.ResolveTarget(os.Args[2], func(j config.Job) error {
+	if err := g.ResolveTarget(os.Args[2], logger.LogJob(cache.CacheJob(func(j config.Job) error {
 		return docker.Run(j)
-	}); err != nil {
+	}))); err != nil {
 		log.Fatal(err)
 	}
 }

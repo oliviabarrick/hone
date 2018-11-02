@@ -195,7 +195,6 @@ func (c *Cache) HashJob(job config.Job) (string, error) {
 	sum.Write([]byte(job.Shell))
 
 	err := c.WalkInputs(job, func(path string) error {
-		log.Println(job.Name, path)
 		data, err := ioutil.ReadFile(path)
 		if err != nil {
 			return err
@@ -228,11 +227,16 @@ func CacheJob(callback func (config.Job) error) func (config.Job) error {
 			return err
 		}
 
-		for _, entry := range cacheManifest {
-			err := c.Get(entry)
-			if err != nil {
-				return err
+		if cacheManifest != nil {
+			for _, entry := range cacheManifest {
+				err := c.Get(entry)
+				if err != nil {
+					return err
+				}
 			}
+
+			log.Printf("Loaded job \"%s\" from cache.\n", job.Name)
+			return nil
 		}
 
 		err = callback(job)

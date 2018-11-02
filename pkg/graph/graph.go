@@ -3,13 +3,11 @@ package graph
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 	"github.com/justinbarrick/farm/pkg/config"
-	"github.com/justinbarrick/farm/pkg/cache"
 )
 
 type JobGraph struct {
@@ -96,11 +94,8 @@ func (j *JobGraph) ResolveTarget(target string, callback func (config.Job) error
 		wg.Add(1)
 		go func(n *Node) {
 			defer wg.Done()
-			cb := j.WaitForDeps(n, cache.CacheJob(callback))
-			err := cb(*n.Job)
-			if err != nil {
-				log.Println(err)
-			}
+			cb := j.WaitForDeps(n, callback)
+			cb(*n.Job)
 		}(node.(*Node))
 	}
 

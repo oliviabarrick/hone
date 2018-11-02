@@ -3,6 +3,12 @@ job "test" {
 
     inputs = ["./cmd/", "./pkg/"]
 
+    env = {
+        "GO111MODULE" = "on"
+        "GOCACHE" = "/build/.gocache"
+        "GOPATH" = "/build/.go"
+    }
+
     shell = "go test ./cmd/... ./pkg/..."
 }
 
@@ -13,6 +19,8 @@ job "build" {
 
     env = {
         "GO111MODULE" = "on"
+        "GOCACHE" = "/build/.gocache"
+        "GOPATH" = "/build/.go"
     }
 
     inputs = ["./cmd/*", "./pkg/*/*"]

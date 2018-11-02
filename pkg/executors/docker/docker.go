@@ -15,7 +15,6 @@ import (
 )
 
 func Run(j config.Job) error {
-	log.Printf("===> Running job: %s\n", j.Name)
 	ctx := context.TODO()
 
 	d, err := docker.NewEnvClient()
