@@ -1,7 +1,7 @@
 job "test" {
     image = "golang"
 
-    inputs = ["./cmd/*", "./pkg/*"]
+    inputs = ["./cmd/", "./pkg/"]
 
     shell = "go test ./cmd/... ./pkg/..."
 }
@@ -13,10 +13,9 @@ job "build" {
 
     env = {
         "GO111MODULE" = "on"
-        "GOOS" = "darwin"
     }
 
-    inputs = ["./cmd/*", "./pkg/*"]
+    inputs = ["./cmd/*", "./pkg/*/*"]
     output = "farm"
 
     shell = "go build -v -o ./farm ./cmd/farm.go"
