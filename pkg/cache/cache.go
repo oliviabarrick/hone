@@ -2,11 +2,9 @@ package cache
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"github.com/justinbarrick/farm/pkg/config"
 	"github.com/justinbarrick/farm/pkg/logger"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,115 +15,15 @@ type CacheEntry struct {
 	Hash     string
 }
 
-type Cache struct {
-	CacheDir string
+type Cache interface {
+	Copy(src, dst string) error
+	Get(entry CacheEntry) error
+	Set(filePath string) (CacheEntry, error)
+	LoadCacheManifest(cacheKey string) ([]CacheEntry, error)
+	DumpCacheManifest(cacheKey string, entries []CacheEntry) error
 }
 
-func NewCache(cacheDir string) (Cache, error) {
-	cache := Cache{
-		CacheDir: cacheDir,
-	}
-
-	err := os.Mkdir(cacheDir, 0777)
-	if err != nil && !os.IsExist(err) {
-		return Cache{}, err
-	}
-
-	err = os.Mkdir(filepath.Join(cacheDir, "in"), 0777)
-	if err != nil && !os.IsExist(err) {
-		return Cache{}, err
-	}
-
-	err = os.Mkdir(filepath.Join(cacheDir, "out"), 0777)
-	if err != nil && !os.IsExist(err) {
-		return Cache{}, err
-	}
-
-	return cache, nil
-}
-
-func (c *Cache) Copy(src, dst string) error {
-	from, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer from.Close()
-
-	to, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		return err
-	}
-	defer to.Close()
-
-	_, err = io.Copy(to, from)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *Cache) Get(entry CacheEntry) error {
-	cacheKey := filepath.Join(c.CacheDir, "out", entry.Hash)
-	return c.Copy(cacheKey, entry.Filename)
-}
-
-func (c *Cache) Set(filePath string) (CacheEntry, error) {
-	fileSum := sha256.New()
-
-	data, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return CacheEntry{}, err
-	}
-
-	fileSum.Write(data)
-
-	cacheKey := fmt.Sprintf("%x", fileSum.Sum(nil))
-	cacheOut := filepath.Join(c.CacheDir, "out", cacheKey)
-
-	c.Copy(filePath, cacheOut)
-
-	return CacheEntry{
-		Filename: filePath,
-		Hash:     cacheKey,
-	}, nil
-}
-
-func (c *Cache) LoadCacheManifest(cacheKey string) ([]CacheEntry, error) {
-	cachePath := filepath.Join(c.CacheDir, "in", cacheKey)
-
-	cacheFile, err := os.Open(cachePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-
-		return nil, err
-	}
-	defer cacheFile.Close()
-
-	entries := []CacheEntry{}
-	err = json.NewDecoder(cacheFile).Decode(&entries)
-	if err != nil {
-		return nil, err
-	}
-
-	return entries, nil
-}
-
-func (c *Cache) DumpCacheManifest(cacheKey string, entries []CacheEntry) error {
-	cachePath := filepath.Join(c.CacheDir, "in", cacheKey)
-
-	cacheFile, err := os.OpenFile(cachePath, os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		return err
-	}
-	defer cacheFile.Close()
-
-	return json.NewEncoder(cacheFile).Encode(entries)
-}
-
-func (c *Cache) WalkInputs(job config.Job, fn func(string) error) error {
+func WalkInputs(job config.Job, fn func(string) error) error {
 	inputs := []string{}
 
 	if job.Inputs != nil {
@@ -190,13 +88,13 @@ func (c *Cache) WalkInputs(job config.Job, fn func(string) error) error {
 	return nil
 }
 
-func (c *Cache) HashJob(job config.Job) (string, error) {
+func HashJob(job config.Job) (string, error) {
 	sum := sha256.New()
 
 	sum.Write([]byte(job.Image))
 	sum.Write([]byte(job.Shell))
 
-	err := c.WalkInputs(job, func(path string) error {
+	err := WalkInputs(job, func(path string) error {
 		data, err := ioutil.ReadFile(path)
 		if err != nil {
 			return err
@@ -212,14 +110,9 @@ func (c *Cache) HashJob(job config.Job) (string, error) {
 	return fmt.Sprintf("%x", sum.Sum(nil)), nil
 }
 
-func CacheJob(callback func(config.Job) error) func(config.Job) error {
+func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 	return func(job config.Job) error {
-		c, err := NewCache(".farm_cache")
-		if err != nil {
-			return err
-		}
-
-		cacheKey, err := c.HashJob(job)
+		cacheKey, err := HashJob(job)
 		if err != nil {
 			return err
 		}
