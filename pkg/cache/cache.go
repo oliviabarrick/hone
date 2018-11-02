@@ -109,6 +109,18 @@ func HashJob(job config.Job) (string, error) {
 	return fmt.Sprintf("%x", sum.Sum(nil)), nil
 }
 
+func HashFile(filePath string) (string, error) {
+	fileSum := sha256.New()
+
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", err
+  }
+
+	fileSum.Write(data)
+	return fmt.Sprintf("%x", fileSum.Sum(nil)), nil
+}
+
 func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 	return func(job config.Job) error {
 		cacheKey, err := HashJob(job)
@@ -118,19 +130,31 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 
 		cacheManifest, err := c.LoadCacheManifest(cacheKey)
 		if err != nil {
-			logger.Log(job, "????\n")
 			return err
 		}
 
 		if cacheManifest != nil {
 			for _, entry := range cacheManifest {
-				err := c.Get(entry)
-				if err != nil {
-					return err
+				fetch := true
+
+				_, err = os.Open(entry.Filename)
+				if err == nil {
+					hash, _ := HashFile(entry.Filename)
+					if hash == entry.Hash {
+						logger.Log(job, fmt.Sprintf("Skipping upto date file %s.", entry.Filename))
+						fetch = false
+					}
+				}
+
+				if fetch {
+					err := c.Get(entry)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
-			logger.Log(job, "Loaded from cache.\n")
+			logger.Log(job, fmt.Sprintf("Loaded from cache."))
 			return nil
 		}
 

@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"github.com/justinbarrick/farm/pkg/cache"
 	"encoding/json"
-	"fmt"
 	"log"
 	"io/ioutil"
 	"path/filepath"
-	"crypto/sha256"
 	"github.com/minio/minio-go"
 )
 
@@ -58,16 +56,11 @@ func (c *S3Cache) Get(entry cache.CacheEntry) error {
 }
 
 func (c *S3Cache) Set(filePath string) (cache.CacheEntry, error) {
-	fileSum := sha256.New()
-
-	data, err := ioutil.ReadFile(filePath)
+	cacheKey, err := cache.HashFile(filePath)
 	if err != nil {
 		return cache.CacheEntry{}, err
 	}
 
-	fileSum.Write(data)
-
-	cacheKey := fmt.Sprintf("%x", fileSum.Sum(nil))
 	cachePath := filepath.Join("out", cacheKey)
 
 	_, err = c.s3.FPutObject(Bucket, cachePath, filePath, minio.PutObjectOptions{})

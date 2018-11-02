@@ -1,12 +1,9 @@
 package filecache
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"github.com/justinbarrick/farm/pkg/cache"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -65,16 +62,11 @@ func (c *FileCache) Get(entry cache.CacheEntry) error {
 }
 
 func (c *FileCache) Set(filePath string) (cache.CacheEntry, error) {
-	fileSum := sha256.New()
-
-	data, err := ioutil.ReadFile(filePath)
+	cacheKey, err := cache.HashFile(filePath)
 	if err != nil {
 		return cache.CacheEntry{}, err
 	}
 
-	fileSum.Write(data)
-
-	cacheKey := fmt.Sprintf("%x", fileSum.Sum(nil))
 	cacheOut := filepath.Join(c.CacheDir, "out", cacheKey)
 
 	c.Copy(filePath, cacheOut)
