@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"io"
 	"fmt"
 	"log"
@@ -55,7 +56,7 @@ func Run(j config.Job) error {
 		Cmd: []string{
 			j.Shell,
 		},
-		Entrypoint: []string{"/bin/sh", "-cx"},
+		Entrypoint: []string{"/bin/sh", "-cex"},
 		Env: env,
 		WorkingDir: "/build",
 	}, &container.HostConfig{
@@ -86,11 +87,16 @@ func Run(j config.Job) error {
 	}
 	io.Copy(os.Stdout, out)
 
-	_, err = d.ContainerWait(ctx, ctr.ID)
+	status, err := d.ContainerWait(ctx, ctr.ID)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("===> Job completed: %s\n", j.Name)
+	log.Printf("Container exited: %s, status code %d\n", j.Name, status)
+
+	if status != 0 {
+		return errors.New(fmt.Sprintf("Container returned status code: %d", status))
+	}
+
 	return nil
 }
