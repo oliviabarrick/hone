@@ -3,11 +3,13 @@ package graph
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 	"github.com/justinbarrick/farm/pkg/config"
+	"github.com/justinbarrick/farm/pkg/cache"
 )
 
 type JobGraph struct {
@@ -60,6 +62,18 @@ func (j *JobGraph) BuildGraph(jobs map[string]*config.Job) {
 	}
 }
 
+func (j *JobGraph) WaitForDeps(n *Node, callback func (config.Job) error) func (config.Job) error {
+	return func (job config.Job) error {
+		defer close(n.Done)
+
+		for _, node := range graph.NodesOf(j.graph.To(n.ID())) {
+			_ = <-node.(*Node).Done
+		}
+
+		return callback(job)
+	}
+}
+
 func (j *JobGraph) ResolveTarget(target string, callback func (config.Job) error) error {
 	targetId := config.Crc(target)
 	targetNode := j.graph.Node(targetId)
@@ -81,14 +95,12 @@ func (j *JobGraph) ResolveTarget(target string, callback func (config.Job) error
 
 		wg.Add(1)
 		go func(n *Node) {
-			defer close(n.Done)
 			defer wg.Done()
-
-			for _, node := range graph.NodesOf(j.graph.To(n.ID())) {
-				_ = <-node.(*Node).Done
+			cb := j.WaitForDeps(n, cache.CacheJob(callback))
+			err := cb(*n.Job)
+			if err != nil {
+				log.Println(err)
 			}
-
-			callback(*n.Job)
 		}(node.(*Node))
 	}
 

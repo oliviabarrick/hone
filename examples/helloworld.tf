@@ -1,19 +1,9 @@
 job "test" {
-    image = "alpine"
+    image = "golang"
 
-    input = "myinput"
-    output = "myoutput"
+    inputs = ["./cmd/*", "./pkg/*"]
 
-    shell = "go test ${build.input}"
-}
-
-job "curl" {
-    image = "alpine"
-
-    output = "google.html"
-    shell = "curl https://google.com > google.html"
-
-    deps = ["hello", "world"]
+    shell = "go test ./cmd/... ./pkg/..."
 }
 
 job "build" {
@@ -23,12 +13,22 @@ job "build" {
 
     env = {
         "GO111MODULE" = "on"
+        "GOOS" = "darwin"
     }
 
-    input = "./cmd/farm.go"
+    inputs = ["./cmd/*", "./pkg/*"]
     output = "farm"
 
-    shell = "go build -v -o ${build.output} ${build.input}"
+    shell = "go build -v -o ./farm ./cmd/farm.go"
+}
+
+job "curl" {
+    image = "byrnedo/alpine-curl"
+
+    output = "google.html"
+    shell = "curl https://google.com > google.html"
+
+    deps = ["hello", "world"]
 }
 
 job "hello" {
@@ -49,8 +49,8 @@ job "world" {
     }
 
     shell = <<EOF
-echo world > ${world.outputs.mine}
-cat ${hello.output} >> ${world.outputs.mine}
+echo world > lol
+echo hi >> lol
 EOF
 }
 
