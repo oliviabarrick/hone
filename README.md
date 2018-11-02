@@ -12,3 +12,15 @@ Design:
 * Jobs are configured as makefile-like targets.
 * Dependencies can be defined implicitly or explicitly.
 * CRUD handlers are easy to implement.
+
+Building:
+
+```
+GO111MODULE=on go get -u github.com/justinbarrick/farm
+```
+
+Running:
+
+```
+farm examples/helloworld.tf build
+```
