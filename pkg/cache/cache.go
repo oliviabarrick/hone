@@ -3,13 +3,13 @@ package cache
 import (
 	"fmt"
 	"os"
-	"log"
 	"io"
 	"path/filepath"
 	"io/ioutil"
 	"encoding/json"
 	"crypto/sha256"
 	"github.com/justinbarrick/farm/pkg/config"
+	"github.com/justinbarrick/farm/pkg/logger"
 )
 
 type CacheEntry struct {
@@ -235,7 +235,7 @@ func CacheJob(callback func (config.Job) error) func (config.Job) error {
 				}
 			}
 
-			log.Printf("Loaded job \"%s\" from cache.\n", job.Name)
+			logger.Log(job, "Loaded from cache.\n")
 			return nil
 		}
 

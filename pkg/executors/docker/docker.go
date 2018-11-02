@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"fmt"
-	"log"
 	"os"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -13,6 +12,8 @@ import (
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/api/types/container"
 	"github.com/justinbarrick/farm/pkg/config"
+	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 func Run(j config.Job) error {
@@ -76,23 +77,24 @@ func Run(j config.Job) error {
 		return err
 	}
 
-	log.Printf("Started container: %s\n", ctr.ID[:8])
+	logger.Log(j, fmt.Sprintf("Started container: %s\n", ctr.ID[:8]))
 
 	out, err := d.ContainerLogs(ctx, ctr.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
+		Follow: true,
 	})
 	if err != nil {
 		return err
 	}
-	io.Copy(os.Stdout, out)
+	stdcopy.StdCopy(logger.LogWriter(j), logger.LogWriterError(j), out)
 
 	status, err := d.ContainerWait(ctx, ctr.ID)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Container exited: %s, status code %d\n", j.Name, status)
+	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.Name, status))
 
 	if status != 0 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", status))
