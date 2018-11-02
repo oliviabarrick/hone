@@ -1,14 +1,14 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
 	"hash/crc32"
-	"strings"
 	"os"
-	"errors"
+	"strings"
 )
 
 func Crc(identifier string) int64 {
@@ -22,15 +22,15 @@ type Config struct {
 }
 
 type Job struct {
-	Name    string `hcl:"name,label"`
-	Image   string `hcl:"image"`
-	Shell   string `hcl:"shell"`
-	Inputs  *[]string `hcl:"inputs"`
-	Input   *string `hcl:"input"`
+	Name    string             `hcl:"name,label"`
+	Image   string             `hcl:"image"`
+	Shell   string             `hcl:"shell"`
+	Inputs  *[]string          `hcl:"inputs"`
+	Input   *string            `hcl:"input"`
 	Outputs *map[string]string `hcl:"outputs"`
-	Output  *string `hcl:"output"`
+	Output  *string            `hcl:"output"`
 	Env     *map[string]string `hcl:"env"`
-	Deps    *[]string `hcl:"deps"`
+	Deps    *[]string          `hcl:"deps"`
 }
 
 func (j Job) ID() int64 {
