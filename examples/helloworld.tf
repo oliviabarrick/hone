@@ -66,14 +66,14 @@ job "bye" {
 
     output = "bye"
 
-    shell = "echo bye > ${bye.output}"
+    shell = "echo bye > bye"
 }
 
 job "moon" {
     image = "alpine"
 
-    input = "${bye.output}"
+    input = "bye"
     output = "moon"
 
-    shell = "cat ${moon.input} > ${moon.output}"
+    shell = "cat bye > moon"
 }

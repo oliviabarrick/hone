@@ -2,10 +2,13 @@ package config
 
 import (
 	"fmt"
-	"github.com/hashicorp/hcl"
+	"github.com/hashicorp/hcl2/gohcl"
+	"github.com/hashicorp/hcl2/hcl"
+	"github.com/hashicorp/hcl2/hclparse"
 	"hash/crc32"
-	"io/ioutil"
 	"strings"
+	"os"
+	"errors"
 )
 
 func Crc(identifier string) int64 {
@@ -14,16 +17,20 @@ func Crc(identifier string) int64 {
 	return result
 }
 
+type Config struct {
+	Jobs []*Job `hcl:"job,block"`
+}
+
 type Job struct {
-	Name    string
-	Image   string
-	Inputs  []string
-	Input   string
-	Outputs map[string]string
-	Output  string
-	Env     map[string]string
-	Shell   string
-	Deps    []string
+	Name    string `hcl:"name,label"`
+	Image   string `hcl:"image"`
+	Shell   string `hcl:"shell"`
+	Inputs  *[]string `hcl:"inputs"`
+	Input   *string `hcl:"input"`
+	Outputs *map[string]string `hcl:"outputs"`
+	Output  *string `hcl:"output"`
+	Env     *map[string]string `hcl:"env"`
+	Deps    *[]string `hcl:"deps"`
 }
 
 func (j Job) ID() int64 {
@@ -31,21 +38,31 @@ func (j Job) ID() int64 {
 }
 
 func Unmarshal(fname string) (map[string]*Job, error) {
-	data, err := ioutil.ReadFile(fname)
-	if err != nil {
-		return nil, err
+	parser := hclparse.NewParser()
+	hclFile, hclDiagnostics := parser.ParseHCLFile(fname)
+
+	config := Config{}
+	moreDiags := gohcl.DecodeBody(hclFile.Body, nil, &config)
+	hclDiagnostics = append(hclDiagnostics, moreDiags...)
+	if hclDiagnostics.HasErrors() {
+		wr := hcl.NewDiagnosticTextWriter(
+			os.Stdout,      // writer to send messages to
+			parser.Files(), // the parser's file cache, for source snippets
+			78,             // wrapping width
+			true,           // generate colored/highlighted output
+		)
+
+		wr.WriteDiagnostics(hclDiagnostics)
+		return nil, errors.New("HCL error")
 	}
 
-	jobs := map[string]map[string]*Job{} // map[string]*Job{}
-
-	err = hcl.Unmarshal(data, &jobs)
-
-	for name, job := range jobs["job"] {
-		job.Name = name
+	jobsMap := map[string]*Job{}
+	for _, job := range config.Jobs {
 		if !strings.Contains(job.Image, ":") {
 			job.Image = fmt.Sprintf("%s:latest", job.Image)
 		}
+		jobsMap[job.Name] = job
 	}
 
-	return jobs["job"], nil
+	return jobsMap, nil
 }

@@ -45,17 +45,19 @@ func (j *JobGraph) BuildGraph(jobs map[string]*config.Job) {
 			j.graph.AddNode(NewNode(job))
 		}
 
-		for _, dep := range job.Deps {
-			depJob := jobs[dep]
+		if job.Deps != nil {
+			for _, dep := range *job.Deps {
+				depJob := jobs[dep]
 
-			if j.graph.Node(depJob.ID()) == nil {
-				j.graph.AddNode(NewNode(depJob))
+				if j.graph.Node(depJob.ID()) == nil {
+					j.graph.AddNode(NewNode(depJob))
+				}
+
+				j.graph.SetEdge(simple.Edge{
+					T: j.graph.Node(job.ID()),
+					F: j.graph.Node(depJob.ID()),
+				})
 			}
-
-			j.graph.SetEdge(simple.Edge{
-				T: j.graph.Node(job.ID()),
-				F: j.graph.Node(depJob.ID()),
-			})
 		}
 	}
 }

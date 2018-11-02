@@ -127,7 +127,10 @@ func (c *Cache) DumpCacheManifest(cacheKey string, entries []CacheEntry) error {
 
 func (c *Cache) WalkInputs(job config.Job, fn func(string) error) error {
 	inputs := []string{}
-	inputs = append(inputs, job.Inputs...)
+
+	if job.Inputs != nil {
+		inputs = append(inputs, *job.Inputs...)
+	}
 
 	for _, input := range inputs {
 		inputFile, err := os.Open(input)
@@ -244,12 +247,14 @@ func CacheJob(callback func(config.Job) error) func(config.Job) error {
 		}
 
 		entries := []CacheEntry{}
-		for _, output := range job.Outputs {
-			cacheEntry, err := c.Set(output)
-			if err != nil {
-				return err
+		if job.Outputs != nil {
+			for _, output := range *job.Outputs {
+				cacheEntry, err := c.Set(output)
+				if err != nil {
+					return err
+				}
+				entries = append(entries, cacheEntry)
 			}
-			entries = append(entries, cacheEntry)
 		}
 
 		return c.DumpCacheManifest(cacheKey, entries)

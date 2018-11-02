@@ -43,8 +43,10 @@ func Run(j config.Job) error {
 	}
 
 	env := []string{}
-	for name, value := range j.Env {
-		env = append(env, fmt.Sprintf("%s=%s", name, value))
+	if j.Env != nil {
+		for name, value := range *j.Env {
+			env = append(env, fmt.Sprintf("%s=%s", name, value))
+		}
 	}
 
 	cwd, err := os.Getwd()
@@ -68,6 +70,7 @@ func Run(j config.Job) error {
 				Target: "/build",
 			},
 		},
+		AutoRemove: true,
 	}, nil, "")
 	if err != nil {
 		return err
