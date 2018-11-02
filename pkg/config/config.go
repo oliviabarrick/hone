@@ -1,11 +1,11 @@
 package config
 
 import (
-	"io/ioutil"
-	"strings"
 	"fmt"
 	"github.com/hashicorp/hcl"
 	"hash/crc32"
+	"io/ioutil"
+	"strings"
 )
 
 func Crc(identifier string) int64 {
@@ -15,15 +15,15 @@ func Crc(identifier string) int64 {
 }
 
 type Job struct {
-	Name string
-	Image string
-	Inputs []string
-	Input string
+	Name    string
+	Image   string
+	Inputs  []string
+	Input   string
 	Outputs map[string]string
-	Output string
-	Env map[string]string
-	Shell string
-	Deps []string
+	Output  string
+	Env     map[string]string
+	Shell   string
+	Deps    []string
 }
 
 func (j Job) ID() int64 {
@@ -42,7 +42,7 @@ func Unmarshal(fname string) (map[string]*Job, error) {
 
 	for name, job := range jobs["job"] {
 		job.Name = name
-		if ! strings.Contains(job.Image, ":") {
+		if !strings.Contains(job.Image, ":") {
 			job.Image = fmt.Sprintf("%s:latest", job.Image)
 		}
 	}

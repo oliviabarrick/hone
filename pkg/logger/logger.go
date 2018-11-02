@@ -1,13 +1,13 @@
 package logger
 
 import (
-	"io"
 	"fmt"
+	"github.com/justinbarrick/farm/pkg/config"
+	"github.com/kvz/logstreamer"
+	"io"
 	"log"
 	"os"
 	"strings"
-	"github.com/justinbarrick/farm/pkg/config"
-	"github.com/kvz/logstreamer"
 )
 
 func LogWriter(job config.Job) io.Writer {
@@ -24,8 +24,8 @@ func Log(job config.Job, message string) {
 	log.Printf(" == %s => %s\n", job.Name, strings.TrimSpace(message))
 }
 
-func LogJob(callback func (config.Job) error) func (config.Job) error {
-	return func (job config.Job) error {
+func LogJob(callback func(config.Job) error) func(config.Job) error {
+	return func(job config.Job) error {
 		log.Printf("======> Running job \"%s\".\n", job.Name)
 		err := callback(job)
 		if err != nil {

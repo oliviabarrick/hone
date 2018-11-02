@@ -3,17 +3,17 @@ package docker
 import (
 	"context"
 	"errors"
-	"io"
 	"fmt"
-	"os"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
-	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/justinbarrick/farm/pkg/config"
 	"github.com/justinbarrick/farm/pkg/logger"
-	"github.com/docker/docker/pkg/stdcopy"
+	"io"
+	"os"
 )
 
 func Run(j config.Job) error {
@@ -58,7 +58,7 @@ func Run(j config.Job) error {
 			j.Shell,
 		},
 		Entrypoint: []string{"/bin/sh", "-cex"},
-		Env: env,
+		Env:        env,
 		WorkingDir: "/build",
 	}, &container.HostConfig{
 		Mounts: []mount.Mount{
@@ -68,7 +68,7 @@ func Run(j config.Job) error {
 				Target: "/build",
 			},
 		},
-  }, nil, "")
+	}, nil, "")
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func Run(j config.Job) error {
 	out, err := d.ContainerLogs(ctx, ctr.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
-		Follow: true,
+		Follow:     true,
 	})
 	if err != nil {
 		return err

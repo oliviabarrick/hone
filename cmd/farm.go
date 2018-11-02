@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
-	"os"
+	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/config"
 	"github.com/justinbarrick/farm/pkg/executors/docker"
 	"github.com/justinbarrick/farm/pkg/graph"
 	"github.com/justinbarrick/farm/pkg/logger"
-	"github.com/justinbarrick/farm/pkg/cache"
+	"log"
+	"os"
 )
 
 func main() {

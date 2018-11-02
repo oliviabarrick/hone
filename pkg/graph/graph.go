@@ -3,11 +3,11 @@ package graph
 import (
 	"errors"
 	"fmt"
-	"sync"
+	"github.com/justinbarrick/farm/pkg/config"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
-	"github.com/justinbarrick/farm/pkg/config"
+	"sync"
 )
 
 type JobGraph struct {
@@ -21,7 +21,7 @@ type Node struct {
 
 func NewNode(job *config.Job) *Node {
 	return &Node{
-		Job: job,
+		Job:  job,
 		Done: make(chan bool),
 	}
 }
@@ -60,8 +60,8 @@ func (j *JobGraph) BuildGraph(jobs map[string]*config.Job) {
 	}
 }
 
-func (j *JobGraph) WaitForDeps(n *Node, callback func (config.Job) error) func (config.Job) error {
-	return func (job config.Job) error {
+func (j *JobGraph) WaitForDeps(n *Node, callback func(config.Job) error) func(config.Job) error {
+	return func(job config.Job) error {
 		defer close(n.Done)
 
 		for _, node := range graph.NodesOf(j.graph.To(n.ID())) {
@@ -72,7 +72,7 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func (config.Job) error) func (
 	}
 }
 
-func (j *JobGraph) ResolveTarget(target string, callback func (config.Job) error) error {
+func (j *JobGraph) ResolveTarget(target string, callback func(config.Job) error) error {
 	targetId := config.Crc(target)
 	targetNode := j.graph.Node(targetId)
 	if targetNode == nil {
@@ -87,7 +87,7 @@ func (j *JobGraph) ResolveTarget(target string, callback func (config.Job) error
 	var wg sync.WaitGroup
 
 	for _, node := range sorted {
-		if ! topo.PathExistsIn(j.graph, node, targetNode) {
+		if !topo.PathExistsIn(j.graph, node, targetNode) {
 			continue
 		}
 

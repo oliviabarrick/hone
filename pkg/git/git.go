@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"gopkg.in/src-d/go-git.v4"
-//	"github.com/davecgh/go-spew/spew"
+	//	"github.com/davecgh/go-spew/spew"
 )
 
 func CleanRepoUrl(repoUrl string) string {
@@ -34,7 +34,6 @@ func RepoUrl(remoteName string) (string, error) {
 		return "", err
 	}
 
-
 	for _, r := range list {
 		if r.Config().Name == remoteName {
 			return r.Config().URLs[0], nil
@@ -43,5 +42,3 @@ func RepoUrl(remoteName string) (string, error) {
 
 	return "", errors.New(fmt.Sprintf("Remote \"%s\" not found.", remoteName))
 }
-
-
