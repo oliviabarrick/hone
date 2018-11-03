@@ -61,7 +61,7 @@ job "build" {
     inputs = ["./cmd/*.go", "./pkg/**/*.go"]
     output = "farm"
 
-    shell = "go build -v -o ./farm ./cmd/farm.go"
+    shell = "go build -v -ldflags '-linkmode external -extldflags -static' -o ./farm ./cmd/farm.go"
 }
 
 job "build-mac" {

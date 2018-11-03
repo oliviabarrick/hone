@@ -10,7 +10,7 @@ import (
 )
 
 type FileCache struct {
-	CacheDir string
+	CacheDir string `hcl:"cache_dir"`
 }
 
 func (c *FileCache) Init() error {

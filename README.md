@@ -25,12 +25,94 @@ GO111MODULE=on go get -u github.com/justinbarrick/farm
 farm examples/helloworld.tf build
 ```
 
+# Job specification
+
+You can have as many jobs as necessary. Each job requires a name, docker image, and shell.
+
+You can also specify other jobs that it depends on, environment variables, input files,
+and output files for caching.
+
+```
+job "test" {
+    image = "golang:1.11.2"
+
+    inputs = ["./cmd/", "./pkg/"]
+
+    env = {
+        "GO111MODULE" = "on"
+        "GOCACHE" = "/build/.gocache"
+        "GOPATH" = "/build/.go"
+    }
+
+    shell = "go test ./cmd/... ./pkg/..."
+}
+```
+
+Settings:
+
+* `image`: The image to use.
+* `shell`: Shell commands to run.
+* `deps`: A list of jobs that this job depends on.
+* `inputs`: A list of files, directories, or globs that this job depends on.
+* `input`: A file, directory, or glob that this job depends on.
+* `outputs`: A list of files that this job outputs.
+* `output`: A file that this job outputs.
+* `env`: A map of environment variables to add to the job.
+
+# Execution engine
+
+The tool can use Docker or Kubernetes as a backend for executing builds.
+
+Set `engine = "docker"` to use Docker or `engine = "kubernetes"` to use Kubernetes.
+
+# Environment variables
+
+You can pass in environment variables to use in your configuration in the `env` key:
+
+```
+env = ["VAR1", "VAR2=abc"]
+```
+
+Environment variables are optional, they default to an empty string unless the environment
+variable contains an equals sign in which case the data on the right of the `=` will be the
+default value.
+
+Environment variables can be referenced anywhere else in the configuration:
+
+```
+env = [
+    "ENGINE=docker"
+]
+
+engine = ${environ.ENGINE}
+```
+
 # Caching
 
 By default it uses a local file cache. To override this and use S3 as a cache,
 set:
 
-* `S3_BUCKET`: the bucket to use.
-* `S3_URL`: your S3 URL.
-* `S3_ACCESS_KEY`: your access token.
-* `S3_SECRET_KEY`: your secret token.
+```
+cache {
+    s3 {
+        # the bucket to use
+        "bucket" = "mybucket"
+        # s3 endpoint
+        "endpoint" = "nyc3.digitaloceanspaces.com"
+        # s3 access key
+        "access_key" = "blah"
+        # s3 access key
+        "secret_key" = "blah"
+    }
+}
+```
+
+You can also override the file path for the file cache:
+
+```
+cache {
+    file {
+        cache_dir = "/my/cache/directory"
+    }
+}
+```

@@ -24,6 +24,8 @@ func Run(j job.Job) error {
 		return err
 	}
 
+	d.NegotiateAPIVersion(ctx)
+
 	args := filters.NewArgs()
 	args.Add("reference", j.Image)
 
