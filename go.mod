@@ -2,6 +2,7 @@ module github.com/justinbarrick/farm
 
 require (
 	github.com/bmatcuk/doublestar v1.1.1
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/distribution v2.7.0-rc.0.0.20181024170156-93e082742a00+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20181102213155-3fccc47a09bc
 	github.com/docker/go-connections v0.4.0 // indirect

@@ -30,7 +30,7 @@ job "cleanup" {
         "KUBECONFIG" = "/build/.kubeconfig"
     }
 
-    shell = "kubectl delete pod test build || :"
+    shell = "kubectl delete pod hello world uname || :"
 }
 
 job "test" {
@@ -65,7 +65,7 @@ job "build" {
 }
 
 job "build-mac" {
-    deps = ["test", "build"]
+    deps = ["test"]
 
     image = "golang:1.11.2"
 
@@ -87,20 +87,23 @@ job "k8s-farm" {
 
     env = {
         "KUBECONFIG" = "/build/.kubeconfig"
-        "USE_KUBERNETES" = "1"
+        "ENGINE" = "kubernetes"
+        "S3_ACCESS_KEY" = "${environ.S3_ACCESS_KEY}"
+        "S3_SECRET_KEY" = "${environ.S3_SECRET_KEY}"
+        "S3_ENDPOINT" = "${environ.S3_ENDPOINT}"
+        "S3_BUCKET" = "${environ.S3_BUCKET}"
     }
 
-    input = "./farm"
     deps = [ "build", "cleanup" ]
+    input = "./farm"
 
-    shell = "./farm examples/helloworld.tf curl"
+    shell = "./farm examples/helloworld.tf uname"
 }
 
-job "curl" {
-    image = "byrnedo/alpine-curl"
+job "uname" {
+    image = "alpine"
 
-    output = "google.html"
-    shell = "curl https://google.com > google.html"
+    shell = "uname -a"
 
     deps = ["hello", "world"]
 }

@@ -191,19 +191,21 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 		}
 
 		entries := []CacheEntry{}
-		if job.Outputs != nil {
-			for _, output := range *job.Outputs {
-				logger.Log(job, fmt.Sprintf("Dumping %s to cache (%s).", output, c.Name()))
-				cacheEntry, err := c.Set(output)
-				if err != nil {
-					return err
-				}
-				err = cacheEntry.LoadAttrs()
-				if err != nil {
-					return err
-				}
-				entries = append(entries, cacheEntry)
+		if len(*job.Outputs) == 0 && len(*job.Inputs) == 0 {
+			return nil
+		}
+
+		for _, output := range *job.Outputs {
+			logger.Log(job, fmt.Sprintf("Dumping %s to cache (%s).", output, c.Name()))
+			cacheEntry, err := c.Set(output)
+			if err != nil {
+				return err
 			}
+			err = cacheEntry.LoadAttrs()
+			if err != nil {
+				return err
+			}
+			entries = append(entries, cacheEntry)
 		}
 
 		return c.DumpCacheManifest(cacheKey, entries)

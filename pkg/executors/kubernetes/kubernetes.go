@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/user"
 	"path/filepath"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +16,14 @@ import (
 )
 
 func Run(j job.Job) error {
-	kubeconfig := filepath.Join("/Users/justin", ".kube", "config")
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		usr, err := user.Current()
+		if err != nil {
+			return err
+		}
+		kubeconfig = filepath.Join(usr.HomeDir, ".kube", "config")
+	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
@@ -77,10 +86,17 @@ func Run(j job.Job) error {
 	}
 
 	watchCh := watcher.ResultChan()
+	running := false
 
 	for event := range watchCh {
 		pod = event.Object.(*corev1.Pod)
+
+		if pod.Status.Phase == "Running" {
+			running = true
+		}
+
 		if pod.Status.Phase != "Pending" {
+			logger.Log(j, fmt.Sprintf("Pod phase %s", pod.Status.Phase))
 			break
 		}
 	}
@@ -94,10 +110,14 @@ func Run(j job.Job) error {
 
 	io.Copy(logger.LogWriter(j), readCloser)
 
-	logger.Log(j, fmt.Sprintf("Checking pod status.\n"))
-	pod, err = clientset.CoreV1().Pods("u-jbarrick").Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return err
+	if running {
+		for event := range watchCh {
+			pod = event.Object.(*corev1.Pod)
+
+			if pod.Status.Phase != "Running" {
+				break
+			}
+		}
 	}
 
 	exitStatus := pod.Status.ContainerStatuses[0].State.Terminated.ExitCode

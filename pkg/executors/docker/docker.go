@@ -25,7 +25,6 @@ func Run(j job.Job) error {
 	}
 
 	d.NegotiateAPIVersion(ctx)
-
 	args := filters.NewArgs()
 	args.Add("reference", j.Image)
 
@@ -83,7 +82,6 @@ func Run(j job.Job) error {
 	}
 
 	logger.Log(j, fmt.Sprintf("Started container: %s\n", ctr.ID[:8]))
-
 	out, err := d.ContainerLogs(ctx, ctr.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -95,15 +93,20 @@ func Run(j job.Job) error {
 	stdcopy.StdCopy(logger.LogWriter(j), logger.LogWriterError(j), out)
 
 	statusCh, errCh := d.ContainerWait(ctx, ctr.ID, container.WaitConditionNotRunning)
-	if err=<-errCh; err != nil {
-		return err
-	}
+	statusCode := int64(0)
+	select {
+	case err := <-errCh:
+		if err != nil {
+    	return err
+    }
+  case status := <-statusCh:
+		statusCode = status.StatusCode
+  }
 
-	status := (<-statusCh).StatusCode
-	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.Name, status))
+	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.Name, statusCode))
 
-	if status != 0 {
-		return errors.New(fmt.Sprintf("Container returned status code: %d", status))
+	if statusCode != 0 {
+		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
 	}
 
 	return nil
