@@ -3,16 +3,16 @@ package kubernetes
 import (
 	"errors"
 	"fmt"
+	"github.com/justinbarrick/farm/pkg/job"
+	"github.com/justinbarrick/farm/pkg/logger"
 	"io"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"os/user"
 	"path/filepath"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"github.com/justinbarrick/farm/pkg/job"
-	"github.com/justinbarrick/farm/pkg/logger"
 )
 
 func Run(j *job.Job) error {
@@ -39,7 +39,7 @@ func Run(j *job.Job) error {
 	if j.Env != nil {
 		for name, value := range *j.Env {
 			env = append(env, corev1.EnvVar{
-				Name: name,
+				Name:  name,
 				Value: value,
 			})
 		}
@@ -51,7 +51,7 @@ func Run(j *job.Job) error {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: j.Name,
+			Name:      j.Name,
 			Namespace: "u-jbarrick",
 			Labels: map[string]string{
 				"farm/target": j.Name,
@@ -67,7 +67,7 @@ func Run(j *job.Job) error {
 						"/bin/sh", "-cex", j.Shell,
 					},
 					WorkingDir: "/build",
-					Env: env,
+					Env:        env,
 				},
 			},
 			RestartPolicy: "Never",

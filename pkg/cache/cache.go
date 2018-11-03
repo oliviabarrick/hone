@@ -3,12 +3,12 @@ package cache
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/bmatcuk/doublestar"
 	config "github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"github.com/bmatcuk/doublestar"
 )
 
 type CacheEntry struct {
@@ -118,13 +118,13 @@ func HashFile(filePath string) (string, error) {
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return "", err
-  }
+	}
 
 	fileSum.Write(data)
 	return fmt.Sprintf("%x", fileSum.Sum(nil)), nil
 }
 
-func (c *CacheEntry) LoadAttrs() (error) {
+func (c *CacheEntry) LoadAttrs() error {
 	file, err := os.Open(c.Filename)
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func (c *CacheEntry) LoadAttrs() (error) {
 	return nil
 }
 
-func (c CacheEntry) SyncAttrs() (error) {
+func (c CacheEntry) SyncAttrs() error {
 	return os.Chmod(c.Filename, c.FileMode)
 }
 

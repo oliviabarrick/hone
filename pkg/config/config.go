@@ -1,21 +1,21 @@
 package config
 
 import (
-	"github.com/zclconf/go-cty/cty"
 	"errors"
 	"fmt"
 	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
-	"github.com/justinbarrick/farm/pkg/config/types"
 	"github.com/justinbarrick/farm/pkg/cache/file"
+	"github.com/justinbarrick/farm/pkg/config/types"
+	"github.com/zclconf/go-cty/cty"
 	"os"
 	"strings"
 )
 
 type FirstLoad struct {
-	Env *[]string `hcl:"env"`
-	Remain hcl.Body `hcl:",remain"`
+	Env    *[]string `hcl:"env"`
+	Remain hcl.Body  `hcl:",remain"`
 }
 
 func checkErrors(parser *hclparse.Parser, diagnostics hcl.Diagnostics) error {

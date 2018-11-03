@@ -1,12 +1,12 @@
 package storage
 
 import (
+	"github.com/justinbarrick/farm/pkg/job"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"os/user"
 	"path/filepath"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"github.com/justinbarrick/farm/pkg/job"
 )
 
 func Run(j job.Job) error {

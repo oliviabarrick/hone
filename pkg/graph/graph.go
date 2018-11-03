@@ -3,8 +3,8 @@ package graph
 import (
 	"errors"
 	"fmt"
-	"github.com/justinbarrick/farm/pkg/logger"
 	config "github.com/justinbarrick/farm/pkg/job"
+	"github.com/justinbarrick/farm/pkg/logger"
 	"github.com/justinbarrick/farm/pkg/utils"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"

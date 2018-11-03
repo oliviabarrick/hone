@@ -3,10 +3,10 @@ package main
 import (
 	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/config"
-	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/executors/docker"
 	"github.com/justinbarrick/farm/pkg/executors/kubernetes"
 	"github.com/justinbarrick/farm/pkg/graph"
+	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
 	"log"
 	"os"
@@ -27,7 +27,7 @@ func main() {
 		return orchestratorCb(j)
 	}
 
-	if config.Cache.S3 != nil && ! config.Cache.S3.Disabled {
+	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {
 			log.Fatal(err)
 		}

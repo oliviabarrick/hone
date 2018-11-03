@@ -10,7 +10,7 @@ type Job struct {
 	Shell   string             `hcl:"shell"`
 	Inputs  *[]string          `hcl:"inputs"`
 	Input   *string            `hcl:"input"`
-	Outputs *[]string `hcl:"outputs"`
+	Outputs *[]string          `hcl:"outputs"`
 	Output  *string            `hcl:"output"`
 	Env     *map[string]string `hcl:"env"`
 	Deps    *[]string          `hcl:"deps"`

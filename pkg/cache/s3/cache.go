@@ -2,21 +2,21 @@ package s3cache
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/logger"
-	"encoding/json"
+	"github.com/minio/minio-go"
 	"io/ioutil"
 	"path/filepath"
-	"github.com/minio/minio-go"
 )
 
 type S3Cache struct {
-	Bucket string `hcl:"bucket"`
-	Endpoint string `hcl:"endpoint"`
+	Bucket    string `hcl:"bucket"`
+	Endpoint  string `hcl:"endpoint"`
 	AccessKey string `hcl:"access_key"`
 	SecretKey string `hcl:"secret_key"`
-	Disabled bool `hcl:"disabled"`
-	s3 *minio.Client
+	Disabled  bool   `hcl:"disabled"`
+	s3        *minio.Client
 }
 
 func (c *S3Cache) Init() error {
@@ -30,7 +30,7 @@ func (c *S3Cache) Init() error {
 		exists, newErr := minioClient.BucketExists(c.Bucket)
 		if newErr != nil {
 			return newErr
-		} else if ! exists {
+		} else if !exists {
 			return err
 		}
 	}
