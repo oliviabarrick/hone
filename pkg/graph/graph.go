@@ -3,7 +3,8 @@ package graph
 import (
 	"errors"
 	"fmt"
-	"github.com/justinbarrick/farm/pkg/config"
+	config "github.com/justinbarrick/farm/pkg/job"
+	"github.com/justinbarrick/farm/pkg/utils"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -30,7 +31,7 @@ func (n Node) ID() int64 {
 	return n.Job.ID()
 }
 
-func NewJobGraph(jobs map[string]*config.Job) JobGraph {
+func NewJobGraph(jobs []*config.Job) JobGraph {
 	graph := JobGraph{
 		graph: simple.NewDirectedGraph(),
 	}
@@ -39,7 +40,12 @@ func NewJobGraph(jobs map[string]*config.Job) JobGraph {
 	return graph
 }
 
-func (j *JobGraph) BuildGraph(jobs map[string]*config.Job) {
+func (j *JobGraph) BuildGraph(jobs []*config.Job) {
+	jobsMap := map[string]*config.Job{}
+	for _, job := range jobs {
+		jobsMap[job.Name] = job
+	}
+
 	for _, job := range jobs {
 		if j.graph.Node(job.ID()) == nil {
 			j.graph.AddNode(NewNode(job))
@@ -47,7 +53,7 @@ func (j *JobGraph) BuildGraph(jobs map[string]*config.Job) {
 
 		if job.Deps != nil {
 			for _, dep := range *job.Deps {
-				depJob := jobs[dep]
+				depJob := jobsMap[dep]
 
 				if j.graph.Node(depJob.ID()) == nil {
 					j.graph.AddNode(NewNode(depJob))
@@ -75,7 +81,7 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func(config.Job) error) func(co
 }
 
 func (j *JobGraph) ResolveTarget(target string, callback func(config.Job) error) error {
-	targetId := config.Crc(target)
+	targetId := utils.Crc(target)
 	targetNode := j.graph.Node(targetId)
 	if targetNode == nil {
 		return errors.New(fmt.Sprintf("Target %s not found.", target))

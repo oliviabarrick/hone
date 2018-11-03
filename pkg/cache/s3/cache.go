@@ -10,34 +10,33 @@ import (
 	"github.com/minio/minio-go"
 )
 
-const Bucket = "justinbarrick-cache"
-
 type S3Cache struct {
-	bucket string
+	Bucket string `hcl:"bucket"`
+	Endpoint string `hcl:"endpoint"`
+	AccessKey string `hcl:"access_key"`
+	SecretKey string `hcl:"secret_key"`
 	s3 *minio.Client
 }
 
-func NewS3Cache(bucket, endpoint, accessKey, secretKey string) (*S3Cache, error) {
-	minioClient, err := minio.New(endpoint, accessKey, secretKey, true)
+func (c *S3Cache) Init() error {
+	minioClient, err := minio.New(c.Endpoint, c.AccessKey, c.SecretKey, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = minioClient.MakeBucket(Bucket, "us-east-1")
+	err = minioClient.MakeBucket(c.Bucket, "us-east-1")
 	if err != nil {
-		exists, newErr := minioClient.BucketExists(Bucket)
+		exists, newErr := minioClient.BucketExists(c.Bucket)
 		if newErr != nil {
-			return nil, newErr
+			return newErr
 		} else if ! exists {
-			return nil, err
+			return err
 		}
 	}
 
 	logger.Printf("Initialized S3 cache.")
-
-	return &S3Cache{
-		s3: minioClient,
-	}, nil
+	c.s3 = minioClient
+	return nil
 }
 
 func (c S3Cache) Name() string {
@@ -47,7 +46,7 @@ func (c S3Cache) Name() string {
 func (c *S3Cache) Get(entry cache.CacheEntry) error {
 	cachePath := filepath.Join("out", entry.Hash)
 
-	err := c.s3.FGetObject(Bucket, cachePath, entry.Filename, minio.GetObjectOptions{})
+	err := c.s3.FGetObject(c.Bucket, cachePath, entry.Filename, minio.GetObjectOptions{})
 	if err != nil {
 		if err.Error() != "The specified key does not exist." {
 			return err
@@ -67,7 +66,7 @@ func (c *S3Cache) Set(filePath string) (cache.CacheEntry, error) {
 
 	cachePath := filepath.Join("out", cacheKey)
 
-	_, err = c.s3.FPutObject(Bucket, cachePath, filePath, minio.PutObjectOptions{})
+	_, err = c.s3.FPutObject(c.Bucket, cachePath, filePath, minio.PutObjectOptions{})
 	if err != nil {
 		return cache.CacheEntry{}, err
 	}
@@ -81,7 +80,7 @@ func (c *S3Cache) Set(filePath string) (cache.CacheEntry, error) {
 func (c *S3Cache) LoadCacheManifest(cacheKey string) ([]cache.CacheEntry, error) {
 	cachePath := filepath.Join("in", cacheKey)
 
-	object, err := c.s3.GetObject(Bucket, cachePath, minio.GetObjectOptions{})
+	object, err := c.s3.GetObject(c.Bucket, cachePath, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +114,7 @@ func (c *S3Cache) DumpCacheManifest(cacheKey string, entries []cache.CacheEntry)
 
 	uploader := bytes.NewBuffer(encoded)
 
-	_, err = c.s3.PutObject(Bucket, cachePath, uploader, -1, minio.PutObjectOptions{})
+	_, err = c.s3.PutObject(c.Bucket, cachePath, uploader, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return err
 	}

@@ -1,62 +1,76 @@
 package config
 
 import (
+	"github.com/zclconf/go-cty/cty"
 	"errors"
 	"fmt"
 	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
-	"hash/crc32"
+	"github.com/justinbarrick/farm/pkg/config/types"
+	"github.com/justinbarrick/farm/pkg/cache/file"
 	"os"
 	"strings"
 )
 
-func Crc(identifier string) int64 {
-	crcTable := crc32.MakeTable(0xD5828281)
-	result := int64(crc32.Checksum([]byte(identifier), crcTable))
-	return result
+type FirstLoad struct {
+	Env *[]string `hcl:"env"`
+	Remain hcl.Body `hcl:",remain"`
 }
 
-type Config struct {
-	Jobs []*Job `hcl:"job,block"`
+func checkErrors(parser *hclparse.Parser, diagnostics hcl.Diagnostics) error {
+	if diagnostics.HasErrors() {
+		wr := hcl.NewDiagnosticTextWriter(os.Stderr, parser.Files(), 78, true)
+		wr.WriteDiagnostics(diagnostics)
+		return errors.New("HCL error")
+	}
+	return nil
 }
 
-type Job struct {
-	Name    string             `hcl:"name,label"`
-	Image   string             `hcl:"image"`
-	Shell   string             `hcl:"shell"`
-	Inputs  *[]string          `hcl:"inputs"`
-	Input   *string            `hcl:"input"`
-	Outputs *[]string `hcl:"outputs"`
-	Output  *string            `hcl:"output"`
-	Env     *map[string]string `hcl:"env"`
-	Deps    *[]string          `hcl:"deps"`
-}
-
-func (j Job) ID() int64 {
-	return Crc(j.Name)
-}
-
-func Unmarshal(fname string) (map[string]*Job, error) {
+func Unmarshal(fname string) (*types.Config, error) {
+	//variables := &Variables{}
+	config := &types.Config{}
 	parser := hclparse.NewParser()
-	hclFile, hclDiagnostics := parser.ParseHCLFile(fname)
 
-	config := Config{}
-	moreDiags := gohcl.DecodeBody(hclFile.Body, nil, &config)
-	hclDiagnostics = append(hclDiagnostics, moreDiags...)
-	if hclDiagnostics.HasErrors() {
-		wr := hcl.NewDiagnosticTextWriter(
-			os.Stdout,      // writer to send messages to
-			parser.Files(), // the parser's file cache, for source snippets
-			78,             // wrapping width
-			true,           // generate colored/highlighted output
-		)
-
-		wr.WriteDiagnostics(hclDiagnostics)
-		return nil, errors.New("HCL error")
+	hclFile, diags := parser.ParseHCLFile(fname)
+	if err := checkErrors(parser, diags); err != nil {
+		return nil, err
 	}
 
-	jobsMap := map[string]*Job{}
+	fl := &FirstLoad{}
+
+	diags = gohcl.DecodeBody(hclFile.Body, nil, fl)
+	if err := checkErrors(parser, diags); err != nil {
+		return nil, err
+	}
+
+	environ := map[string]cty.Value{}
+	if fl.Env != nil {
+		for _, key := range *fl.Env {
+			env := strings.SplitN(key, "=", 2)
+			defaultVal := ""
+			if len(env) > 1 {
+				defaultVal = env[1]
+			}
+			val := os.Getenv(env[0])
+			if val == "" {
+				val = defaultVal
+			}
+			environ[env[0]] = cty.StringVal(val)
+		}
+	}
+
+	ctx := hcl.EvalContext{
+		Variables: map[string]cty.Value{
+			"environ": cty.MapVal(environ),
+		},
+	}
+
+	diags = gohcl.DecodeBody(fl.Remain, &ctx, config)
+	if err := checkErrors(parser, diags); err != nil {
+		return nil, err
+	}
+
 	for _, job := range config.Jobs {
 		if !strings.Contains(job.Image, ":") {
 			job.Image = fmt.Sprintf("%s:latest", job.Image)
@@ -75,10 +89,15 @@ func Unmarshal(fname string) (map[string]*Job, error) {
 		if job.Output != nil {
 			*job.Outputs = append(*job.Outputs, *job.Output)
 		}
-
-
-		jobsMap[job.Name] = job
 	}
 
-	return jobsMap, nil
+	if config.Cache == nil {
+		config.Cache = &types.CacheConfig{}
+	}
+
+	if config.Cache.File == nil {
+		config.Cache.File = &filecache.FileCache{}
+	}
+
+	return config, nil
 }

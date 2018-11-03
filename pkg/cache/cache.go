@@ -3,7 +3,7 @@ package cache
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/justinbarrick/farm/pkg/config"
+	config "github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
 	"io/ioutil"
 	"os"

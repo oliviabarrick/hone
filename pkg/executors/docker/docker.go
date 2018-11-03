@@ -10,13 +10,13 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/justinbarrick/farm/pkg/config"
+	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
 	"io"
 	"os"
 )
 
-func Run(j config.Job) error {
+func Run(j job.Job) error {
 	ctx := context.TODO()
 
 	d, err := docker.NewEnvClient()

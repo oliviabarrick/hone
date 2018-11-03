@@ -3,7 +3,7 @@ package filecache
 import (
 	"encoding/json"
 	"github.com/justinbarrick/farm/pkg/cache"
-	"log"
+	"github.com/justinbarrick/farm/pkg/logger"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,28 +13,28 @@ type FileCache struct {
 	CacheDir string
 }
 
-func NewFileCache(cacheDir string) (*FileCache, error) {
-	cache := FileCache{
-		CacheDir: cacheDir,
+func (c *FileCache) Init() error {
+	if c.CacheDir == "" {
+		c.CacheDir = ".farm_cache"
 	}
 
-	err := os.Mkdir(cacheDir, 0777)
+	err := os.Mkdir(c.CacheDir, 0777)
 	if err != nil && !os.IsExist(err) {
-		return nil, err
+		return err
 	}
 
-	err = os.Mkdir(filepath.Join(cacheDir, "in"), 0777)
+	err = os.Mkdir(filepath.Join(c.CacheDir, "in"), 0777)
 	if err != nil && !os.IsExist(err) {
-		return nil, err
+		return err
 	}
 
-	err = os.Mkdir(filepath.Join(cacheDir, "out"), 0777)
+	err = os.Mkdir(filepath.Join(c.CacheDir, "out"), 0777)
 	if err != nil && !os.IsExist(err) {
-		return nil, err
+		return err
 	}
 
-	log.Println("Initialized file cache.")
-	return &cache, nil
+	logger.Printf("Initialized file cache.\n")
+	return nil
 }
 
 func (c FileCache) Name() string {
