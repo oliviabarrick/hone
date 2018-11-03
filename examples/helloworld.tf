@@ -43,7 +43,7 @@ job "hello" {
 
     output = "hello"
 
-    shell = "echo lol"
+    shell = "echo lol > hello"
 }
 
 job "world" {

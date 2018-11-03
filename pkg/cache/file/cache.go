@@ -3,6 +3,7 @@ package filecache
 import (
 	"encoding/json"
 	"github.com/justinbarrick/farm/pkg/cache"
+	"log"
 	"io"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ func NewFileCache(cacheDir string) (*FileCache, error) {
 		return nil, err
 	}
 
+	log.Println("Initialized file cache.")
 	return &cache, nil
 }
 
@@ -58,7 +60,11 @@ func (c *FileCache) Copy(src, dst string) error {
 
 func (c *FileCache) Get(entry cache.CacheEntry) error {
 	cacheKey := filepath.Join(c.CacheDir, "out", entry.Hash)
-	return c.Copy(cacheKey, entry.Filename)
+	err := c.Copy(cacheKey, entry.Filename)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *FileCache) Set(filePath string) (cache.CacheEntry, error) {

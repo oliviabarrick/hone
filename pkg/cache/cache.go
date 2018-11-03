@@ -166,6 +166,7 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 		entries := []CacheEntry{}
 		if job.Outputs != nil {
 			for _, output := range *job.Outputs {
+				logger.Log(job, fmt.Sprintf("Dumping to cache."))
 				cacheEntry, err := c.Set(output)
 				if err != nil {
 					return err
