@@ -23,11 +23,11 @@ func main() {
 		orchestratorCb = kubernetes.Run
 	}
 
-	callback := func(j job.Job) error {
+	callback := func(j *job.Job) error {
 		return orchestratorCb(j)
 	}
 
-	if config.Cache.S3 != nil {
+	if config.Cache.S3 != nil && ! config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {
 			log.Fatal(err)
 		}
@@ -41,7 +41,8 @@ func main() {
 	callback = cache.CacheJob(fileCache, callback)
 
 	g := graph.NewJobGraph(config.Jobs)
-	if err := g.ResolveTarget(os.Args[2], logger.LogJob(callback)); err != nil {
-		log.Fatal(err)
+	if errs := g.ResolveTarget(os.Args[2], logger.LogJob(callback)); len(errs) != 0 {
+		log.Println("Exiting with failure.")
+		os.Exit(len(errs))
 	}
 }

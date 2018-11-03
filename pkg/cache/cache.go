@@ -19,13 +19,13 @@ type CacheEntry struct {
 
 type Cache interface {
 	Name() string
-	Get(entry CacheEntry) error
-	Set(filePath string) (CacheEntry, error)
-	LoadCacheManifest(cacheKey string) ([]CacheEntry, error)
-	DumpCacheManifest(cacheKey string, entries []CacheEntry) error
+	Get(namespace string, entry CacheEntry) error
+	Set(namespace, filePath string) (CacheEntry, error)
+	LoadCacheManifest(namespace, cacheKey string) ([]CacheEntry, error)
+	DumpCacheManifest(namespace, cacheKey string, entries []CacheEntry) error
 }
 
-func WalkInputs(job config.Job, fn func(string) error) error {
+func WalkInputs(job *config.Job, fn func(string) error) error {
 	inputs := []string{}
 
 	if job.Inputs != nil {
@@ -90,7 +90,7 @@ func WalkInputs(job config.Job, fn func(string) error) error {
 	return nil
 }
 
-func HashJob(job config.Job) (string, error) {
+func HashJob(job *config.Job) (string, error) {
 	sum := sha256.New()
 
 	sum.Write([]byte(job.Image))
@@ -143,14 +143,14 @@ func (c CacheEntry) SyncAttrs() (error) {
 	return os.Chmod(c.Filename, c.FileMode)
 }
 
-func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
-	return func(job config.Job) error {
+func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error {
+	return func(job *config.Job) error {
 		cacheKey, err := HashJob(job)
 		if err != nil {
 			return err
 		}
 
-		cacheManifest, err := c.LoadCacheManifest(cacheKey)
+		cacheManifest, err := c.LoadCacheManifest("in", cacheKey)
 		if err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 				}
 
 				if fetch {
-					err := c.Get(entry)
+					err := c.Get("out", entry)
 					if err != nil {
 						return err
 					}
@@ -197,7 +197,7 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 
 		for _, output := range *job.Outputs {
 			logger.Log(job, fmt.Sprintf("Dumping %s to cache (%s).", output, c.Name()))
-			cacheEntry, err := c.Set(output)
+			cacheEntry, err := c.Set("out", output)
 			if err != nil {
 				return err
 			}
@@ -208,6 +208,6 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 			entries = append(entries, cacheEntry)
 		}
 
-		return c.DumpCacheManifest(cacheKey, entries)
+		return c.DumpCacheManifest("in", cacheKey, entries)
 	}
 }

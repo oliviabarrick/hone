@@ -16,7 +16,7 @@ import (
 	"os"
 )
 
-func Run(j job.Job) error {
+func Run(j *job.Job) error {
 	ctx := context.TODO()
 
 	d, err := docker.NewEnvClient()

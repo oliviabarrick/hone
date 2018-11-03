@@ -62,8 +62,8 @@ func (c *FileCache) Copy(src, dst string) error {
 	return nil
 }
 
-func (c *FileCache) Get(entry cache.CacheEntry) error {
-	cacheKey := filepath.Join(c.CacheDir, "out", entry.Hash)
+func (c *FileCache) Get(namespace string, entry cache.CacheEntry) error {
+	cacheKey := filepath.Join(c.CacheDir, namespace, entry.Hash)
 	err := c.Copy(cacheKey, entry.Filename)
 	if err != nil {
 		return err
@@ -71,13 +71,13 @@ func (c *FileCache) Get(entry cache.CacheEntry) error {
 	return nil
 }
 
-func (c *FileCache) Set(filePath string) (cache.CacheEntry, error) {
+func (c *FileCache) Set(namespace, filePath string) (cache.CacheEntry, error) {
 	cacheKey, err := cache.HashFile(filePath)
 	if err != nil {
 		return cache.CacheEntry{}, err
 	}
 
-	cacheOut := filepath.Join(c.CacheDir, "out", cacheKey)
+	cacheOut := filepath.Join(c.CacheDir, namespace, cacheKey)
 
 	c.Copy(filePath, cacheOut)
 
@@ -87,8 +87,8 @@ func (c *FileCache) Set(filePath string) (cache.CacheEntry, error) {
 	}, nil
 }
 
-func (c *FileCache) LoadCacheManifest(cacheKey string) ([]cache.CacheEntry, error) {
-	cachePath := filepath.Join(c.CacheDir, "in", cacheKey)
+func (c *FileCache) LoadCacheManifest(namespace, cacheKey string) ([]cache.CacheEntry, error) {
+	cachePath := filepath.Join(c.CacheDir, namespace, cacheKey)
 
 	cacheFile, err := os.Open(cachePath)
 	if err != nil {
@@ -109,8 +109,8 @@ func (c *FileCache) LoadCacheManifest(cacheKey string) ([]cache.CacheEntry, erro
 	return entries, nil
 }
 
-func (c *FileCache) DumpCacheManifest(cacheKey string, entries []cache.CacheEntry) error {
-	cachePath := filepath.Join(c.CacheDir, "in", cacheKey)
+func (c *FileCache) DumpCacheManifest(namespace, cacheKey string, entries []cache.CacheEntry) error {
+	cachePath := filepath.Join(c.CacheDir, namespace, cacheKey)
 
 	cacheFile, err := os.OpenFile(cachePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {

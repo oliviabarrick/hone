@@ -14,6 +14,7 @@ type Job struct {
 	Output  *string            `hcl:"output"`
 	Env     *map[string]string `hcl:"env"`
 	Deps    *[]string          `hcl:"deps"`
+	Error   error
 }
 
 func (j Job) ID() int64 {

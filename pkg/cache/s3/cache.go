@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"github.com/minio/minio-go"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type S3Cache struct {
@@ -15,6 +16,7 @@ type S3Cache struct {
 	Endpoint string `hcl:"endpoint"`
 	AccessKey string `hcl:"access_key"`
 	SecretKey string `hcl:"secret_key"`
+	Disabled bool `hcl:"disabled"`
 	s3 *minio.Client
 }
 
@@ -23,6 +25,8 @@ func (c *S3Cache) Init() error {
 	if err != nil {
 		return err
 	}
+
+	spew.Dump(c)
 
 	err = minioClient.MakeBucket(c.Bucket, "us-east-1")
 	if err != nil {
@@ -43,8 +47,8 @@ func (c S3Cache) Name() string {
 	return "s3"
 }
 
-func (c *S3Cache) Get(entry cache.CacheEntry) error {
-	cachePath := filepath.Join("out", entry.Hash)
+func (c *S3Cache) Get(namespace string, entry cache.CacheEntry) error {
+	cachePath := filepath.Join(namespace, entry.Hash)
 
 	err := c.s3.FGetObject(c.Bucket, cachePath, entry.Filename, minio.GetObjectOptions{})
 	if err != nil {
@@ -58,13 +62,13 @@ func (c *S3Cache) Get(entry cache.CacheEntry) error {
 	return nil
 }
 
-func (c *S3Cache) Set(filePath string) (cache.CacheEntry, error) {
+func (c *S3Cache) Set(namespace, filePath string) (cache.CacheEntry, error) {
 	cacheKey, err := cache.HashFile(filePath)
 	if err != nil {
 		return cache.CacheEntry{}, err
 	}
 
-	cachePath := filepath.Join("out", cacheKey)
+	cachePath := filepath.Join(namespace, cacheKey)
 
 	_, err = c.s3.FPutObject(c.Bucket, cachePath, filePath, minio.PutObjectOptions{})
 	if err != nil {
@@ -77,8 +81,8 @@ func (c *S3Cache) Set(filePath string) (cache.CacheEntry, error) {
 	}, nil
 }
 
-func (c *S3Cache) LoadCacheManifest(cacheKey string) ([]cache.CacheEntry, error) {
-	cachePath := filepath.Join("in", cacheKey)
+func (c *S3Cache) LoadCacheManifest(namespace, cacheKey string) ([]cache.CacheEntry, error) {
+	cachePath := filepath.Join(namespace, cacheKey)
 
 	object, err := c.s3.GetObject(c.Bucket, cachePath, minio.GetObjectOptions{})
 	if err != nil {
@@ -104,8 +108,8 @@ func (c *S3Cache) LoadCacheManifest(cacheKey string) ([]cache.CacheEntry, error)
 	return entries, nil
 }
 
-func (c *S3Cache) DumpCacheManifest(cacheKey string, entries []cache.CacheEntry) error {
-	cachePath := filepath.Join("in", cacheKey)
+func (c *S3Cache) DumpCacheManifest(namespace, cacheKey string, entries []cache.CacheEntry) error {
+	cachePath := filepath.Join(namespace, cacheKey)
 
 	encoded, err := json.Marshal(entries)
 	if err != nil {

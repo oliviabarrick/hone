@@ -3,7 +3,8 @@ env = [
     "S3_BUCKET=farm-cache-bucket",
     "S3_ENDPOINT=nyc3.digitaloceanspaces.com",
     "S3_ACCESS_KEY",
-    "S3_SECRET_KEY"
+    "S3_SECRET_KEY",
+    "S3_ENABLED"
 ]
 
 engine = "${environ.ENGINE}"
@@ -14,6 +15,7 @@ cache {
         secret_key = "${environ.S3_SECRET_KEY}"
         endpoint = "${environ.S3_ENDPOINT}"
         bucket = "${environ.S3_BUCKET}"
+        disabled = "${environ.S3_ENABLED != "true"}"
     }
 }
 
@@ -21,16 +23,6 @@ job "all" {
     deps = ["k8s-farm", "build-mac"]
     image = "alpine"
     shell = "echo all"
-}
-
-job "cleanup" {
-    image = "lachlanevenson/k8s-kubectl"
-
-    env = {
-        "KUBECONFIG" = "/build/.kubeconfig"
-    }
-
-    shell = "kubectl delete pod hello world uname || :"
 }
 
 job "test" {
@@ -94,7 +86,9 @@ job "k8s-farm" {
         "S3_BUCKET" = "${environ.S3_BUCKET}"
     }
 
-    deps = [ "build", "cleanup" ]
+    input = "./farm"
+
+    deps = [ "build" ]
 
     shell = "./farm examples/helloworld.tf uname"
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/justinbarrick/farm/pkg/logger"
 )
 
-func Run(j job.Job) error {
+func Run(j *job.Job) error {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig == "" {
 		usr, err := user.Current()

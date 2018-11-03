@@ -3,6 +3,7 @@ package graph
 import (
 	"errors"
 	"fmt"
+	"github.com/justinbarrick/farm/pkg/logger"
 	config "github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/utils"
 	"gonum.org/v1/gonum/graph"
@@ -68,32 +69,48 @@ func (j *JobGraph) BuildGraph(jobs []*config.Job) {
 	}
 }
 
-func (j *JobGraph) WaitForDeps(n *Node, callback func(config.Job) error) func(config.Job) error {
-	return func(job config.Job) error {
+func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error) func(*config.Job) error {
+	return func(job *config.Job) error {
 		defer close(n.Done)
 
+		failedDeps := []string{}
+
 		for _, node := range graph.NodesOf(j.graph.To(n.ID())) {
-			_ = <-node.(*Node).Done
+			d := node.(*Node)
+			_ = <-d.Done
+			if d.Job.Error != nil {
+				failedDeps = append(failedDeps, d.Job.Name)
+			}
 		}
 
-		return callback(job)
+		if len(failedDeps) > 0 {
+			job.Error = errors.New(fmt.Sprintf("Failed dependencies: %s", failedDeps))
+			logger.Log(job, job.Error.Error())
+		}
+
+		if job.Error == nil {
+			job.Error = callback(job)
+		}
+
+		return job.Error
 	}
 }
 
-func (j *JobGraph) ResolveTarget(target string, callback func(config.Job) error) error {
+func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error) []error {
 	targetId := utils.Crc(target)
 	targetNode := j.graph.Node(targetId)
 	if targetNode == nil {
-		return errors.New(fmt.Sprintf("Target %s not found.", target))
+		return []error{errors.New(fmt.Sprintf("Target %s not found.", target))}
 	}
 
 	sorted, err := topo.Sort(j.graph)
 	if err != nil {
-		return err
+		return []error{err}
 	}
 
 	var wg sync.WaitGroup
 
+	errors := []error{}
 	for _, node := range sorted {
 		if !topo.PathExistsIn(j.graph, node, targetNode) {
 			continue
@@ -103,10 +120,13 @@ func (j *JobGraph) ResolveTarget(target string, callback func(config.Job) error)
 		go func(n *Node) {
 			defer wg.Done()
 			cb := j.WaitForDeps(n, callback)
-			cb(*n.Job)
+			err = cb(n.Job)
+			if err != nil {
+				errors = append(errors, err)
+			}
 		}(node.(*Node))
 	}
 
 	wg.Wait()
-	return nil
+	return errors
 }
