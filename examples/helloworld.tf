@@ -95,7 +95,6 @@ job "k8s-farm" {
     }
 
     deps = [ "build", "cleanup" ]
-    input = "./farm"
 
     shell = "./farm examples/helloworld.tf uname"
 }
