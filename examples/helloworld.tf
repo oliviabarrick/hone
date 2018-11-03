@@ -1,18 +1,19 @@
 env = [
     "ENGINE=docker",
-    "BUCKET=farm-cache-bucket",
-    "ACCESS_KEY",
-    "SECRET_KEY"
+    "S3_BUCKET=farm-cache-bucket",
+    "S3_ENDPOINT=nyc3.digitaloceanspaces.com",
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY"
 ]
 
 engine = "${environ.ENGINE}"
 
 cache {
     s3 {
-        access_key = "${environ.ACCESS_KEY}"
-        secret_key = "${environ.SECRET_KEY}"
-        endpoint = "nyc3.digitaloceanspaces.com"
-        bucket = "${environ.BUCKET}"
+        access_key = "${environ.S3_ACCESS_KEY}"
+        secret_key = "${environ.S3_SECRET_KEY}"
+        endpoint = "${environ.S3_ENDPOINT}"
+        bucket = "${environ.S3_BUCKET}"
     }
 }
 
