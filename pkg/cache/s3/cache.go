@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"github.com/minio/minio-go"
-	"github.com/davecgh/go-spew/spew"
 )
 
 type S3Cache struct {
@@ -25,8 +24,6 @@ func (c *S3Cache) Init() error {
 	if err != nil {
 		return err
 	}
-
-	spew.Dump(c)
 
 	err = minioClient.MakeBucket(c.Bucket, "us-east-1")
 	if err != nil {

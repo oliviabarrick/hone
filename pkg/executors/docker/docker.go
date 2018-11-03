@@ -71,7 +71,6 @@ func Run(j *job.Job) error {
 				Target: "/build",
 			},
 		},
-		AutoRemove: true,
 	}, nil, "")
 	if err != nil {
 		return err
@@ -97,13 +96,17 @@ func Run(j *job.Job) error {
 	select {
 	case err := <-errCh:
 		if err != nil {
-    	return err
-    }
-  case status := <-statusCh:
+			return err
+		}
+	case status := <-statusCh:
 		statusCode = status.StatusCode
-  }
+	}
 
 	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.Name, statusCode))
+
+	if err := d.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{}); err != nil {
+		return err
+	}
 
 	if statusCode != 0 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
