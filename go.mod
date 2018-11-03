@@ -2,8 +2,8 @@ module github.com/justinbarrick/farm
 
 require (
 	github.com/bmatcuk/doublestar v1.1.1
-	github.com/docker/distribution v2.6.2+incompatible // indirect
-	github.com/docker/docker v1.13.1
+	github.com/docker/distribution v2.7.0-rc.0.0.20181024170156-93e082742a00+incompatible // indirect
+	github.com/docker/docker v0.7.3-0.20181102213155-3fccc47a09bc
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
@@ -21,14 +21,16 @@ require (
 	github.com/minio/minio-go v6.0.9+incompatible
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
+	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/zclconf/go-cty v0.0.0-20180815031001-58bb2bc0302a
+	github.com/zclconf/go-cty v0.0.0-20181017232614-01c5aba823a6
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	gonum.org/v1/gonum v0.0.0-20181029232933-400065bf7646
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/src-d/go-git.v4 v4.7.1
-	k8s.io/api v0.0.0-20181005203742-357ec6384fa7
-	k8s.io/apimachinery v0.0.0-20180913025736-6dd46049f395
+	k8s.io/api v0.0.0-20181102122915-de5c567eef5c
+	k8s.io/apimachinery v0.0.0-20181101131016-0aa9751e8aaf
 	k8s.io/client-go v9.0.0+incompatible
 )
