@@ -3,8 +3,8 @@ package s3cache
 import (
 	"bytes"
 	"github.com/justinbarrick/farm/pkg/cache"
+	"github.com/justinbarrick/farm/pkg/logger"
 	"encoding/json"
-	"log"
 	"io/ioutil"
 	"path/filepath"
 	"github.com/minio/minio-go"
@@ -33,11 +33,15 @@ func NewS3Cache(bucket, endpoint, accessKey, secretKey string) (*S3Cache, error)
 		}
 	}
 
-	log.Println("Initialized S3 cache.")
+	logger.Printf("Initialized S3 cache.")
 
 	return &S3Cache{
 		s3: minioClient,
 	}, nil
+}
+
+func (c S3Cache) Name() string {
+	return "s3"
 }
 
 func (c *S3Cache) Get(entry cache.CacheEntry) error {

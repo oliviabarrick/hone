@@ -7,6 +7,7 @@ job "test" {
         "GO111MODULE" = "on"
         "GOCACHE" = "/build/.gocache"
         "GOPATH" = "/build/.go"
+        "GOOS" = "darwin"
     }
 
     shell = "go test ./cmd/... ./pkg/..."
@@ -21,9 +22,10 @@ job "build" {
         "GO111MODULE" = "on"
         "GOCACHE" = "/build/.gocache"
         "GOPATH" = "/build/.go"
+        "GOOS" = "darwin"
     }
 
-    inputs = ["./cmd/*", "./pkg/*/*"]
+    inputs = ["./cmd/*.go", "./pkg/**/*.go"]
     output = "farm"
 
     shell = "go build -v -o ./farm ./cmd/farm.go"

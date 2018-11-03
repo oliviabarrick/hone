@@ -8,14 +8,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"github.com/bmatcuk/doublestar"
 )
 
 type CacheEntry struct {
 	Filename string
 	Hash     string
+	FileMode os.FileMode
 }
 
 type Cache interface {
+	Name() string
 	Get(entry CacheEntry) error
 	Set(filePath string) (CacheEntry, error)
 	LoadCacheManifest(cacheKey string) ([]CacheEntry, error)
@@ -32,7 +35,7 @@ func WalkInputs(job config.Job, fn func(string) error) error {
 	for _, input := range inputs {
 		inputFile, err := os.Open(input)
 		if err != nil && os.IsNotExist(err) {
-			matches, err := filepath.Glob(input)
+			matches, err := doublestar.Glob(input)
 			if err != nil {
 				return err
 			}
@@ -121,6 +124,25 @@ func HashFile(filePath string) (string, error) {
 	return fmt.Sprintf("%x", fileSum.Sum(nil)), nil
 }
 
+func (c *CacheEntry) LoadAttrs() (error) {
+	file, err := os.Open(c.Filename)
+	if err != nil {
+		return err
+	}
+
+	fi, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	c.FileMode = fi.Mode()
+	return nil
+}
+
+func (c CacheEntry) SyncAttrs() (error) {
+	return os.Chmod(c.Filename, c.FileMode)
+}
+
 func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 	return func(job config.Job) error {
 		cacheKey, err := HashJob(job)
@@ -151,10 +173,15 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 					if err != nil {
 						return err
 					}
+					err = entry.SyncAttrs()
+					if err != nil {
+						return err
+					}
+					logger.Log(job, fmt.Sprintf("Loaded %s from cache (%s).", entry.Filename, c.Name()))
 				}
 			}
 
-			logger.Log(job, fmt.Sprintf("Loaded from cache."))
+			logger.Log(job, "Job cached.")
 			return nil
 		}
 
@@ -166,8 +193,12 @@ func CacheJob(c Cache, callback func(config.Job) error) func(config.Job) error {
 		entries := []CacheEntry{}
 		if job.Outputs != nil {
 			for _, output := range *job.Outputs {
-				logger.Log(job, fmt.Sprintf("Dumping to cache."))
+				logger.Log(job, fmt.Sprintf("Dumping %s to cache (%s).", output, c.Name()))
 				cacheEntry, err := c.Set(output)
+				if err != nil {
+					return err
+				}
+				err = cacheEntry.LoadAttrs()
 				if err != nil {
 					return err
 				}

@@ -37,6 +37,10 @@ func NewFileCache(cacheDir string) (*FileCache, error) {
 	return &cache, nil
 }
 
+func (c FileCache) Name() string {
+	return "file"
+}
+
 func (c *FileCache) Copy(src, dst string) error {
 	from, err := os.Open(src)
 	if err != nil {

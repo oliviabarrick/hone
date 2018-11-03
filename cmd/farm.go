@@ -22,12 +22,6 @@ func main() {
 		return docker.Run(j)
 	}
 
-	c, err := filecache.NewFileCache(".farm_cache")
-	if err != nil {
-		log.Fatal(err)
-	}
-	callback = cache.CacheJob(c, callback)
-
 	bucket := os.Getenv("S3_BUCKET")
 	endpoint := os.Getenv("S3_URL")
 	accessKey := os.Getenv("S3_ACCESS_KEY")
@@ -39,6 +33,12 @@ func main() {
 		}
 		callback = cache.CacheJob(c, callback)
 	}
+
+	c, err := filecache.NewFileCache(".farm_cache")
+	if err != nil {
+		log.Fatal(err)
+	}
+	callback = cache.CacheJob(c, callback)
 
 	g := graph.NewJobGraph(jobs)
 	if err := g.ResolveTarget(os.Args[2], logger.LogJob(callback)); err != nil {
