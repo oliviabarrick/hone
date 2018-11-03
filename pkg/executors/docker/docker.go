@@ -92,11 +92,12 @@ func Run(j job.Job) error {
 	}
 	stdcopy.StdCopy(logger.LogWriter(j), logger.LogWriterError(j), out)
 
-	status, err := d.ContainerWait(ctx, ctr.ID)
-	if err != nil {
+	statusCh, errCh := d.ContainerWait(ctx, ctr.ID, container.WaitConditionNotRunning)
+	if err=<-errCh; err != nil {
 		return err
 	}
 
+	status := (<-statusCh).StatusCode
 	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.Name, status))
 
 	if status != 0 {

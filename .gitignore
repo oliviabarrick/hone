@@ -1,0 +1,8 @@
+.kubeconfig
+.farm_cache
+.go
+.gocache
+.gocachedarwin
+farm
+farm_darwin
+*.swp

@@ -34,7 +34,7 @@ job "cleanup" {
 }
 
 job "test" {
-    image = "golang:1.11"
+    image = "golang:1.11.2"
 
     inputs = ["./cmd/", "./pkg/"]
 
@@ -50,7 +50,7 @@ job "test" {
 job "build" {
     deps = ["test"]
 
-    image = "golang:1.11"
+    image = "golang:1.11.2"
 
     env = {
         "GO111MODULE" = "on"
@@ -67,7 +67,7 @@ job "build" {
 job "build-mac" {
     deps = ["test", "build"]
 
-    image = "golang:1.11.1"
+    image = "golang:1.11.2"
 
     env = {
         "GO111MODULE" = "on"
