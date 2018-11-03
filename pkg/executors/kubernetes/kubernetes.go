@@ -96,7 +96,6 @@ func Run(j job.Job) error {
 		}
 
 		if pod.Status.Phase != "Pending" {
-			logger.Log(j, fmt.Sprintf("Pod phase %s", pod.Status.Phase))
 			break
 		}
 	}
@@ -125,5 +124,6 @@ func Run(j job.Job) error {
 		return errors.New(fmt.Sprintf("Pod exited with error: %d", exitStatus))
 	}
 
+	logger.Log(j, fmt.Sprintf("Pod exit status %d, phase %s", exitStatus, pod.Status.Phase))
 	return nil
 }
