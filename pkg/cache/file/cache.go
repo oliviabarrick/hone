@@ -41,6 +41,10 @@ func (c FileCache) Name() string {
 	return "file"
 }
 
+func (c FileCache) Env() map[string]string {
+	return map[string]string{}
+}
+
 func (c *FileCache) Copy(src, dst string) error {
 	from, err := os.Open(src)
 	if err != nil {

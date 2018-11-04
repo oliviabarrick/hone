@@ -28,7 +28,7 @@ job "all" {
 job "test" {
     image = "golang:1.11.2"
 
-    inputs = ["./cmd/", "./pkg/"]
+    inputs = ["./cmd/", "./pkg/", "go.mod", "go.sum"]
 
     env = {
         "GO111MODULE" = "on"
@@ -37,6 +37,22 @@ job "test" {
     }
 
     shell = "go test ./cmd/... ./pkg/..."
+}
+
+job "build-cache-shim" {
+    image = "golang:1.11.2"
+
+    env = {
+        "GO111MODULE" = "on"
+        "GOCACHE" = "/build/.gocache"
+        "GOPATH" = "/build/.go"
+        "CGO_ENABLED" = "0"
+    }
+
+    inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
+    output = "./docker/cache-shim"
+
+    shell = "go build -ldflags '-w -extldflags -static' -o ./docker/cache-shim ./cmd/cache-shim"
 }
 
 job "build" {
@@ -50,10 +66,10 @@ job "build" {
         "GOPATH" = "/build/.go"
     }
 
-    inputs = ["./cmd/*.go", "./pkg/**/*.go"]
+    inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
     output = "farm"
 
-    shell = "go build -v -o ./farm ./cmd/farm.go"
+    shell = "go build -v -o ./farm ./cmd/farm"
 }
 
 job "build-mac" {
@@ -68,10 +84,10 @@ job "build-mac" {
         "GOOS" = "darwin"
     }
 
-    inputs = ["./cmd/*.go", "./pkg/**/*.go"]
+    inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
     output = "farm_darwin"
 
-    shell = "go build -v -o ./farm_darwin ./cmd/farm.go"
+    shell = "go build -v -o ./farm_darwin ./cmd/farm"
 }
 
 job "k8s-farm" {
@@ -84,21 +100,14 @@ job "k8s-farm" {
         "S3_SECRET_KEY" = "${environ.S3_SECRET_KEY}"
         "S3_ENDPOINT" = "${environ.S3_ENDPOINT}"
         "S3_BUCKET" = "${environ.S3_BUCKET}"
+        "S3_ENABLED" = "true"
     }
 
     input = "./farm"
 
     deps = [ "build" ]
 
-    shell = "./farm examples/helloworld.tf uname"
-}
-
-job "uname" {
-    image = "alpine"
-
-    shell = "uname -a"
-
-    deps = ["hello", "world"]
+    shell = "./farm examples/helloworld.tf build-cache-shim"
 }
 
 job "hello" {

@@ -40,6 +40,15 @@ func (c *S3Cache) Init() error {
 	return nil
 }
 
+func (c S3Cache) Env() map[string]string {
+	return map[string]string{
+		"S3_BUCKET": c.Bucket,
+		"S3_ENDPOINT": c.Endpoint,
+		"S3_ACCESS_KEY": c.AccessKey,
+		"S3_SECRET_KEY": c.SecretKey,
+	}
+}
+
 func (c S3Cache) Name() string {
 	return "s3"
 }

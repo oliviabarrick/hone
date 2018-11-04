@@ -3,6 +3,8 @@ package kubernetes
 import (
 	"errors"
 	"fmt"
+	"github.com/justinbarrick/farm/pkg/storage"
+	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
 	"io"
@@ -15,7 +17,7 @@ import (
 	"path/filepath"
 )
 
-func Run(j *job.Job) error {
+func Run(c cache.Cache, j *job.Job) error {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig == "" {
 		usr, err := user.Current()
@@ -35,7 +37,13 @@ func Run(j *job.Job) error {
 		return err
 	}
 
+	storageCacheKey, err := storage.UploadInputs(c, j)
+	if err != nil {
+		return err
+	}
+
 	env := []corev1.EnvVar{}
+
 	if j.Env != nil {
 		for name, value := range *j.Env {
 			env = append(env, corev1.EnvVar{
@@ -44,6 +52,48 @@ func Run(j *job.Job) error {
 			})
 		}
 	}
+
+	cacheEnv := c.Env()
+
+	secret, err := clientset.CoreV1().Secrets("u-jbarrick").Create(&corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      j.Name,
+			Namespace: "u-jbarrick",
+			Labels: map[string]string{
+				"farm/target": j.Name,
+			},
+		},
+		StringData: cacheEnv,
+	})
+	if err != nil {
+		return err
+	}
+	defer clientset.CoreV1().Secrets("u-jbarrick").Delete(secret.Name, &metav1.DeleteOptions{})
+
+	initEnv := []corev1.EnvVar{
+		{
+			Name:  "CACHE_KEY",
+			Value: storageCacheKey,
+		},
+	}
+
+
+	for key, _ := range cacheEnv {
+		initEnv = append(initEnv, corev1.EnvVar{
+			Name: key,
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: secret.Name},
+					Key: key,
+				},
+			},
+		})
+	}
+
 
 	pod, err := clientset.CoreV1().Pods("u-jbarrick").Create(&corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -58,6 +108,32 @@ func Run(j *job.Job) error {
 			},
 		},
 		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				{
+					Name: "share",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{
+							Medium: "Memory",
+						},
+					},
+				},
+			},
+			InitContainers: []corev1.Container{
+				{
+					Name: "cache-shim",
+					Image: "justinbarrick/cache-shim",
+					ImagePullPolicy: "Always",
+					Command: []string{"/cache-shim",},
+					WorkingDir: "/build",
+					Env: initEnv,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "share",
+							MountPath: "/build",
+						},
+					},
+				},
+			},
 			Containers: []corev1.Container{
 				{
 					Name:            j.Name,
@@ -68,6 +144,12 @@ func Run(j *job.Job) error {
 					},
 					WorkingDir: "/build",
 					Env:        env,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "share",
+							MountPath: "/build",
+						},
+					},
 				},
 			},
 			RestartPolicy: "Never",

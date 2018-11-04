@@ -6,3 +6,4 @@
 farm
 farm_darwin
 *.swp
+docker/cache-shim

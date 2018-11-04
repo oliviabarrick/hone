@@ -19,6 +19,7 @@ type CacheEntry struct {
 
 type Cache interface {
 	Name() string
+	Env() map[string]string
 	Get(namespace string, entry CacheEntry) error
 	Set(namespace, filePath string) (CacheEntry, error)
 	LoadCacheManifest(namespace, cacheKey string) ([]CacheEntry, error)
