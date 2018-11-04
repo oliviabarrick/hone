@@ -99,8 +99,7 @@ engine = ${environ.ENGINE}
 
 # Caching
 
-By default it uses a local file cache. To override this and use S3 as a cache,
-set:
+By default it uses a local file cache. To also use S3 as a cache, set:
 
 ```
 cache {
