@@ -1,3 +1,7 @@
+A build tool designed to make quality CI configurations and incremental builds easy to achieve. It
+can replace Make, your CI server, and seamlessly orchestrate workloads running locally in Docker or
+Kubernetes.
+
 # Design
 
 * Remote state, farm calculates a desired build state by creating a DAG of build resources
@@ -6,12 +10,11 @@
 * A single build step is called a "job" and will be provided with its input files and
   build commands, it will return the output files and hashes.
 * Build artifacts and input files are stored in S3-compatible data stores.
-* Jobs can be run on any node and are launched in dependency order based on the DAG.
+* Jobs can be run in Kubernetes or Docker (or any other supported execution engine) and are launched in dependency order based on the DAG.
 * Jobs will be run incrementally, so will only be run when input files have been changed.
 * Builds will be configured using HCL.
 * Jobs are configured as makefile-like targets.
-* Dependencies can be defined implicitly or explicitly.
-* CRUD handlers are easy to implement.
+* Easy integration with Vault for secrets management.
 
 # Building
 
