@@ -13,7 +13,17 @@ import (
 )
 
 func main() {
-	config, err := config.Unmarshal(os.Args[1])
+	farmPath := ".farm.hcl"
+	target := "all"
+
+	if len(os.Args) == 2 {
+		target = os.Args[1]
+	} else if len(os.Args) == 3 {
+		farmPath = os.Args[1]
+		target = os.Args[2]
+	}
+
+	config, err := config.Unmarshal(farmPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,7 +57,7 @@ func main() {
 	callback = cache.CacheJob(fileCache, callback)
 
 	g := graph.NewJobGraph(config.Jobs)
-	if errs := g.ResolveTarget(os.Args[2], logger.LogJob(callback)); len(errs) != 0 {
+	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
 		logger.Printf("Exiting with failure.\n")
 		os.Exit(len(errs))
 	}
