@@ -10,6 +10,7 @@ type Config struct {
 	Jobs   []*job.Job   `hcl:"job,block"`
 	Cache  *CacheConfig `hcl:"cache,block"`
 	Engine *string      `hcl:"engine"`
+	Workspace *string   `hcl:"workspace"`
 }
 
 type CacheConfig struct {

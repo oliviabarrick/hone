@@ -1,12 +1,17 @@
+secrets = [
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY"
+]
+
 env = [
     "ENGINE=docker",
     "S3_BUCKET=farm-cache-bucket",
     "S3_ENDPOINT=nyc3.digitaloceanspaces.com",
-    "S3_ACCESS_KEY",
-    "S3_SECRET_KEY",
-    "S3_ENABLED"
+    "S3_ENABLED",
+    "WORKSPACE=dev"
 ]
 
+workspace = "${environ.WORKSPACE}"
 engine = "${environ.ENGINE}"
 
 cache {
