@@ -3,7 +3,7 @@
 .go
 .gocache
 .gocachedarwin
-farm
+./farm
 farm_darwin
 *.swp
 docker/cache-shim
