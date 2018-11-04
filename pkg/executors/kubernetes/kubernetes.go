@@ -2,6 +2,7 @@ package kubernetes
 
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/justinbarrick/farm/pkg/storage"
@@ -43,10 +44,23 @@ func Run(c cache.Cache, j *job.Job) error {
 		return err
 	}
 
+	outputs, err := json.Marshal(j.Outputs)
+	if err != nil {
+		return err
+	}
+
 	env := []corev1.EnvVar{
 		{
 			Name:  "CACHE_KEY",
 			Value: storageCacheKey,
+		},
+		{
+			Name: "OUTPUTS",
+			Value: string(outputs),
+		},
+		{
+			Name: "CA_FILE",
+			Value: "/build/.farm-ca-certificates.crt",
 		},
 	}
 
@@ -120,7 +134,7 @@ func Run(c cache.Cache, j *job.Job) error {
 					Name: "cache-shim",
 					Image: "justinbarrick/cache-shim",
 					ImagePullPolicy: "Always",
-					Command: []string{"/bin/sh", "-c", "cp /cache-shim /build",},
+					Command: []string{"/bin/sh", "-c", "cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.farm-ca-certificates.crt",},
 					WorkingDir: "/build",
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -208,5 +222,9 @@ func Run(c cache.Cache, j *job.Job) error {
 	}
 
 	logger.Log(j, fmt.Sprintf("Pod exit status %d, phase %s", exitStatus, pod.Status.Phase))
+	if _, err = cache.LoadCache(c, storageCacheKey, j); err != nil {
+		return err
+	}
+
 	return nil
 }

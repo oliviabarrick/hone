@@ -105,19 +105,19 @@ job "k8s-farm" {
 
     deps = [ "build" ]
 
-    shell = "./farm examples/helloworld.tf build-mac"
+    shell = "./farm examples/helloworld.tf build"
 }
 
 job "hello" {
-    image = "alpine"
+    image = "debian:stretch"
 
     output = "hello"
 
-    shell = "echo lol > hello"
+    shell = "echo hilol > hello"
 }
 
 job "world" {
-    image = "alpine"
+    image = "debian:stretch"
 
     deps = ["hello"]
 
@@ -125,8 +125,9 @@ job "world" {
         "lol"
     ]
 
+    inputs = ["hello"]
+
     shell = <<EOF
-echo world > lol
-echo hi >> lol
+cat hello > lol
 EOF
 }

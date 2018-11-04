@@ -16,7 +16,7 @@
 # Building
 
 ```
-GO111MODULE=on go get -u github.com/justinbarrick/farm
+GO111MODULE=on go get -u github.com/justinbarrick/farm/cmd/farm
 ```
 
 # Running
@@ -64,6 +64,8 @@ Settings:
 The tool can use Docker or Kubernetes as a backend for executing builds.
 
 Set `engine = "docker"` to use Docker or `engine = "kubernetes"` to use Kubernetes.
+
+Currently using Kubernetes requires using the S3 cache backend.
 
 # Environment variables
 

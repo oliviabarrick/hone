@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/cache/s3"
 	"io"
 	"io/ioutil"
@@ -8,8 +11,6 @@ import (
 	"os"
 	"os/exec"
 )
-
-
 
 func main() {
 	s3 := s3cache.S3Cache{
@@ -33,7 +34,13 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("Loaded %s from cache (%s).\n", entry.Filename, s3.Name())
+		logger.Printf("Loaded %s from cache (%s).\n", entry.Filename, s3.Name())
+	}
+
+	outputs := []string{}
+	err = json.Unmarshal([]byte(os.Getenv("OUTPUTS")), &outputs)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	cmd := exec.Command(os.Args[1], os.Args[2:]...)
@@ -62,4 +69,10 @@ func main() {
 	if err = cmd.Wait(); err != nil {
 		log.Fatal(err)
 	}
+
+
+	if _, err = cache.DumpOutputs(os.Getenv("CACHE_KEY"), &s3, outputs); err != nil {
+		log.Fatal(err)
+	}
+	logger.Printf("Dumped outputs to cache (%s).\n", s3.Name())
 }

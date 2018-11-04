@@ -151,64 +151,89 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 			return err
 		}
 
-		cacheManifest, err := c.LoadCacheManifest("in", cacheKey)
+		cached, err := LoadCache(c, cacheKey, job)
 		if err != nil {
 			return err
 		}
 
-		if cacheManifest != nil {
-			for _, entry := range cacheManifest {
-				fetch := true
-
-				_, err = os.Open(entry.Filename)
-				if err == nil {
-					hash, _ := HashFile(entry.Filename)
-					if hash == entry.Hash {
-						logger.Log(job, fmt.Sprintf("Skipping upto date file %s.", entry.Filename))
-						fetch = false
-					}
-				}
-
-				if fetch {
-					err := c.Get("out", entry)
-					if err != nil {
-						return err
-					}
-					err = entry.SyncAttrs()
-					if err != nil {
-						return err
-					}
-					logger.Log(job, fmt.Sprintf("Loaded %s from cache (%s).", entry.Filename, c.Name()))
-				}
+		if ! cached {
+			err = callback(job)
+			if err != nil {
+				return err
 			}
-
+		} else {
 			logger.Log(job, "Job cached.")
-			return nil
 		}
 
-		err = callback(job)
-		if err != nil {
-			return err
-		}
-
-		entries := []CacheEntry{}
 		if len(*job.Outputs) == 0 && len(*job.Inputs) == 0 {
 			return nil
 		}
 
-		for _, output := range *job.Outputs {
-			logger.Log(job, fmt.Sprintf("Dumping %s to cache (%s).", output, c.Name()))
-			cacheEntry, err := c.Set("out", output)
-			if err != nil {
-				return err
+		logger.Log(job, fmt.Sprintf("Dumping to cache (%s).", c.Name()))
+		if _, err = DumpOutputs(cacheKey, c, *job.Outputs); err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func LoadCache(c Cache, cacheKey string, job *config.Job) (bool, error) {
+	cacheManifest, err := c.LoadCacheManifest("in", cacheKey)
+	if err != nil {
+		return false, err
+	}
+
+	if cacheManifest != nil {
+		for _, entry := range cacheManifest {
+			fetch := true
+
+			_, err = os.Open(entry.Filename)
+			if err == nil {
+				hash, _ := HashFile(entry.Filename)
+				if hash == entry.Hash {
+					logger.Log(job, fmt.Sprintf("Skipping upto date file %s.", entry.Filename))
+					fetch = false
+				}
 			}
-			err = cacheEntry.LoadAttrs()
-			if err != nil {
-				return err
+
+			if fetch {
+				err := c.Get("out", entry)
+				if err != nil {
+					return false, err
+				}
+				err = entry.SyncAttrs()
+				if err != nil {
+					return false, err
+				}
+				logger.Log(job, fmt.Sprintf("Loaded %s from cache (%s).", entry.Filename, c.Name()))
 			}
-			entries = append(entries, cacheEntry)
 		}
 
-		return c.DumpCacheManifest("in", cacheKey, entries)
+		return true, nil
 	}
+
+	return false, nil
+}
+
+func DumpOutputs(cacheKey string, c Cache, outputs []string) ([]CacheEntry, error) {
+	entries := []CacheEntry{}
+
+	for _, output := range outputs {
+		cacheEntry, err := c.Set("out", output)
+		if err != nil {
+			return nil, err
+		}
+		err = cacheEntry.LoadAttrs()
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, cacheEntry)
+	}
+
+	err := c.DumpCacheManifest("in", cacheKey, entries)
+	if err != nil {
+		return nil, err
+	}
+
+	return entries, nil
 }

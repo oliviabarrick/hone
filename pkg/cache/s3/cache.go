@@ -3,10 +3,14 @@ package s3cache
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"crypto/tls"
+	"github.com/hashicorp/go-rootcerts"
 	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/logger"
 	"github.com/minio/minio-go"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 )
 
@@ -24,6 +28,20 @@ func (c *S3Cache) Init() error {
 	if err != nil {
 		return err
 	}
+
+	tlsConfig := &tls.Config{}
+	if os.Getenv("CA_FILE") != "" {
+		err := rootcerts.ConfigureTLS(tlsConfig, &rootcerts.Config{
+			CAFile: os.Getenv("CA_FILE"),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	minioClient.SetCustomTransport(&http.Transport{
+		TLSClientConfig: tlsConfig,
+	})
 
 	err = minioClient.MakeBucket(c.Bucket, "us-east-1")
 	if err != nil {
