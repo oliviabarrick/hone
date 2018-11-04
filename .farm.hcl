@@ -1,13 +1,31 @@
+secrets = [
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY"
+]
+
 env = [
     "ENGINE=docker",
     "S3_BUCKET=farm-cache-bucket",
     "S3_ENDPOINT=nyc3.digitaloceanspaces.com",
+    "S3_ENABLED=true",
     "S3_ACCESS_KEY",
     "S3_SECRET_KEY",
-    "S3_ENABLED"
+    "WORKSPACE=dev",
+    "VAULT_ADDR=http://127.0.0.1:8200/",
+    "VAULT_TOKEN"
 ]
 
+workspace = "${environ.WORKSPACE}"
 engine = "${environ.ENGINE}"
+
+vault {
+    address = "${environ.VAULT_ADDR}"
+    token = "${environ.VAULT_TOKEN}"
+}
+
+kubernetes {
+    namespace = "default"
+}
 
 cache {
     s3 {

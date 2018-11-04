@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl2/hclparse"
 	"github.com/justinbarrick/farm/pkg/cache/file"
 	"github.com/justinbarrick/farm/pkg/config/types"
+	"github.com/justinbarrick/farm/pkg/secrets/vault"
 	"github.com/zclconf/go-cty/cty"
 	"os"
 	"strings"
@@ -15,6 +16,13 @@ import (
 
 type FirstLoad struct {
 	Env    *[]string `hcl:"env"`
+	Secrets *[]string `hcl:"secrets"`
+	Remain hcl.Body  `hcl:",remain"`
+}
+
+type SecondLoad struct {
+	Workspace    *string `hcl:"workspace"`
+	Vault        *vault.Vault `hcl:"vault,block"`
 	Remain hcl.Body  `hcl:",remain"`
 }
 
@@ -28,7 +36,6 @@ func checkErrors(parser *hclparse.Parser, diagnostics hcl.Diagnostics) error {
 }
 
 func Unmarshal(fname string) (*types.Config, error) {
-	//variables := &Variables{}
 	config := &types.Config{}
 	parser := hclparse.NewParser()
 
@@ -37,14 +44,15 @@ func Unmarshal(fname string) (*types.Config, error) {
 		return nil, err
 	}
 
-	fl := &FirstLoad{}
+	envVars := map[string]string{}
+	environ := map[string]cty.Value{}
 
+	fl := &FirstLoad{}
 	diags = gohcl.DecodeBody(hclFile.Body, nil, fl)
 	if err := checkErrors(parser, diags); err != nil {
 		return nil, err
 	}
 
-	environ := map[string]cty.Value{}
 	if fl.Env != nil {
 		for _, key := range *fl.Env {
 			env := strings.SplitN(key, "=", 2)
@@ -57,6 +65,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 				val = defaultVal
 			}
 			environ[env[0]] = cty.StringVal(val)
+			envVars[env[0]] = val
 		}
 	}
 
@@ -69,7 +78,43 @@ func Unmarshal(fname string) (*types.Config, error) {
 		Variables: variables,
 	}
 
-	diags = gohcl.DecodeBody(fl.Remain, &ctx, config)
+	sl := &SecondLoad{}
+	diags = gohcl.DecodeBody(fl.Remain, &ctx, sl)
+	if err := checkErrors(parser, diags); err != nil {
+		return nil, err
+	}
+
+	if fl.Secrets != nil {
+		workspace := "default"
+		if sl.Workspace != nil {
+			workspace = *sl.Workspace
+		}
+
+		if sl.Vault != nil && sl.Vault.Token != "" {
+			err := sl.Vault.Init()
+			if err != nil {
+				return nil, err
+			}
+
+			secrets, err := sl.Vault.LoadSecrets(workspace, *fl.Secrets, envVars)
+			if err != nil {
+				return nil, err
+			}
+			for key, value := range secrets {
+				environ[key] = cty.StringVal(value)
+			}
+		}
+	}
+
+	if len(environ) != 0 {
+		variables["environ"] = cty.MapVal(environ)
+	}
+
+	ctx = hcl.EvalContext{
+		Variables: variables,
+	}
+
+	diags = gohcl.DecodeBody(sl.Remain, &ctx, config)
 	if err := checkErrors(parser, diags); err != nil {
 		return nil, err
 	}

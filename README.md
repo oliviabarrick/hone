@@ -65,7 +65,15 @@ The tool can use Docker or Kubernetes as a backend for executing builds.
 
 Set `engine = "docker"` to use Docker or `engine = "kubernetes"` to use Kubernetes.
 
-Currently using Kubernetes requires using the S3 cache backend.
+Currently using Kubernetes requires using the S3 cache backend. The Kubernetes namespace and configuration
+file are configurable via the `kubernetes` block:
+
+```
+kubernetes {
+    namespace = "default"
+    kubeconfig = "/path/to/kubeconfig"
+}
+```
 
 # Environment variables
 
@@ -98,13 +106,13 @@ set:
 cache {
     s3 {
         # the bucket to use
-        "bucket" = "mybucket"
+        bucket = "mybucket"
         # s3 endpoint
-        "endpoint" = "nyc3.digitaloceanspaces.com"
+        endpoint = "nyc3.digitaloceanspaces.com"
         # s3 access key
-        "access_key" = "blah"
+        access_key = "blah"
         # s3 access key
-        "secret_key" = "blah"
+        secret_key = "blah"
     }
 }
 ```
@@ -118,3 +126,71 @@ cache {
     }
 }
 ```
+
+# Secrets management with Vault
+
+Secrets can be stored in Vault instead of being passed as environment variables. Secrets are first
+loaded as environment variables and then written into Vault if they don't already exist. Secrets
+are then exposed to the rest of the farm configuration as environment variables and can be used
+in most blocks, for example secrets can configure your cache:
+
+```
+# optional, namespace your vault secrets.
+workspace = "${environ.WORKSPACE}"
+
+secrets = [
+    "S3_ACCESS_KEY", "S3_SECRET_KEY"
+]
+
+env = [
+    "S3_ACCESS_KEY", "S3_SECRET_KEY", "VAULT_TOKEN", "WORKSPACE=dev"
+]
+
+vault {
+    address = "http://127.0.0.1:8200"
+    token = "${environ.VAULT_TOKEN}"
+}
+
+cache {
+    s3 {
+        bucket = "mybucket"
+        endpoint = "nyc3.digitaloceanspaces.com"
+        access_key = "${environ.S3_ACCESS_KEY}"
+        secret_key = "${environ.S3_SECRET_KEY}"
+    }
+}
+
+job "build" {
+    image = "alpine"
+
+    shell = "uname -a"
+}
+```
+
+Save as `secrets.hcl`.
+
+Start a vault instance:
+
+```
+docker run --cap-add=IPC_LOCK -p 8200 --name=dev-vault vault
+```
+
+Take the root token from the vault logs and invoke farm:
+
+```
+export VAULT_TOKEN=$TOKEN
+export S3_ACCESS_KEY="myaccesskey"
+export S3_SECRET_KEY="mysecretkey"
+farm secrets.hcl build
+```
+
+Future runs will only require the vault token:
+
+```
+export VAULT_TOKEN=$TOKEN
+farm secrets.hcl build
+```
+
+Environments can optionally be defined via the `workspace` setting, which will use
+a different namespace for storing secrets (allowing you to easily switch between a
+development and prod namespace).
