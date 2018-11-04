@@ -33,7 +33,13 @@ func main() {
 		if config.Cache.S3 == nil {
 			log.Fatal("Kubernetes is not currently supported without an S3 configuration.")
 		}
-		orchestratorCb = kubernetes.Run
+
+		k := kubernetes.Kubernetes{}
+		if config.Kubernetes == nil {
+			k = *config.Kubernetes
+		}
+
+		orchestratorCb = k.Run
 		logger.Printf("Using Kubernetes for running jobs.\n")
 	} else {
 		logger.Printf("Using Docker for running jobs.\n")

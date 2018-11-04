@@ -22,6 +22,7 @@ type FirstLoad struct {
 
 type SecondLoad struct {
 	Workspace    *string `hcl:"workspace"`
+	Vault        *vault.Vault `hcl:"vault,block"`
 	Remain hcl.Body  `hcl:",remain"`
 }
 
@@ -43,6 +44,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 		return nil, err
 	}
 
+	envVars := map[string]string{}
 	environ := map[string]cty.Value{}
 
 	fl := &FirstLoad{}
@@ -63,6 +65,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 				val = defaultVal
 			}
 			environ[env[0]] = cty.StringVal(val)
+			envVars[env[0]] = val
 		}
 	}
 
@@ -87,15 +90,21 @@ func Unmarshal(fname string) (*types.Config, error) {
 			workspace = *sl.Workspace
 		}
 
-		secrets, err := vault.LoadSecrets(workspace, *fl.Secrets)
-		if err != nil {
-			return nil, err
-		}
-		for key, value := range secrets {
-			environ[key] = cty.StringVal(value)
+		if sl.Vault != nil && sl.Vault.Token != "" {
+			err := sl.Vault.Init()
+			if err != nil {
+				return nil, err
+			}
+
+			secrets, err := sl.Vault.LoadSecrets(workspace, *fl.Secrets, envVars)
+			if err != nil {
+				return nil, err
+			}
+			for key, value := range secrets {
+				environ[key] = cty.StringVal(value)
+			}
 		}
 	}
-	fmt.Printf("%v\n", environ)
 
 	if len(environ) != 0 {
 		variables["environ"] = cty.MapVal(environ)

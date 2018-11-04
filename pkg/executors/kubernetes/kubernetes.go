@@ -19,8 +19,18 @@ import (
 	"path/filepath"
 )
 
-func Run(c cache.Cache, j *job.Job) error {
+type Kubernetes struct {
+	Namespace *string `hcl:"namespace"`
+	Kubeconfig *string `hcl:"kubeconfig"`
+}
+
+func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	kubeconfig := os.Getenv("KUBECONFIG")
+
+	if k.Kubeconfig != nil {
+		kubeconfig = *k.Kubeconfig
+	}
+
 	if kubeconfig == "" {
 		usr, err := user.Current()
 		if err != nil {
@@ -75,14 +85,19 @@ func Run(c cache.Cache, j *job.Job) error {
 
 	cacheEnv := c.Env()
 
-	secret, err := clientset.CoreV1().Secrets("u-jbarrick").Create(&corev1.Secret{
+	namespace := "default"
+	if k.Namespace != nil {
+		namespace = *k.Namespace
+	}
+
+	secret, err := clientset.CoreV1().Secrets(namespace).Create(&corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      j.Name,
-			Namespace: "u-jbarrick",
+			Namespace: namespace,
 			Labels: map[string]string{
 				"farm/target": j.Name,
 			},
@@ -92,7 +107,7 @@ func Run(c cache.Cache, j *job.Job) error {
 	if err != nil {
 		return err
 	}
-	defer clientset.CoreV1().Secrets("u-jbarrick").Delete(secret.Name, &metav1.DeleteOptions{})
+	defer clientset.CoreV1().Secrets(namespace).Delete(secret.Name, &metav1.DeleteOptions{})
 
 	for key, _ := range cacheEnv {
 		env = append(env, corev1.EnvVar{
@@ -106,14 +121,14 @@ func Run(c cache.Cache, j *job.Job) error {
 		})
 	}
 
-	pod, err := clientset.CoreV1().Pods("u-jbarrick").Create(&corev1.Pod{
+	pod, err := clientset.CoreV1().Pods(namespace).Create(&corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      j.Name,
-			Namespace: "u-jbarrick",
+			Namespace: namespace,
 			Labels: map[string]string{
 				"farm/target": j.Name,
 			},
@@ -170,9 +185,9 @@ func Run(c cache.Cache, j *job.Job) error {
 	if err != nil {
 		return err
 	}
-	defer clientset.CoreV1().Pods("u-jbarrick").Delete(pod.Name, &metav1.DeleteOptions{})
+	defer clientset.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 
-	watcher, err := clientset.CoreV1().Pods("u-jbarrick").Watch(metav1.ListOptions{
+	watcher, err := clientset.CoreV1().Pods(namespace).Watch(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("farm/target=%s", j.Name),
 	})
 	if err != nil {
@@ -194,7 +209,7 @@ func Run(c cache.Cache, j *job.Job) error {
 		}
 	}
 
-	req := clientset.CoreV1().Pods("u-jbarrick").GetLogs(pod.Name, &corev1.PodLogOptions{
+	req := clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
   	Container: j.Name,
 		Follow: true,      
 	})
