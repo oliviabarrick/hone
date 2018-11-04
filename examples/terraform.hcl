@@ -1,35 +1,35 @@
-variable "digitalocean_token" {}
+env = [
+    "DIGITALOCEAN_TOKEN"
+]
 
 job "packer_build" {
     image = "hashicorp/packer"
 
-    input = "packer/template.json"
+    input = "packer/*"
 
-    outputs = {
-        "version" = "VERSION"
-    }
+    outputs = [
+        "VERSION"
+    ]
 
     shell =  <<EOF
-packer build -machine-readable ${packer_build.input} |tee packer_output.log
+packer build -machine-readable packer/template.json |tee packer_output.log
 
-grep digitalocean,artifact,0,id packer_output.log |cut -d: -f2 > ${packer_build.outputs.version}
+grep digitalocean,artifact,0,id packer_output.log |cut -d: -f2 > VERSION
 EOF
 }
 
 job "terraform_test" {
     image = "golang"
 
-    env = {
-        "VERSION" = "${packer_build.output.version}"
-    }
+    deps = [ "packer_build" ]
 
     inputs = [
         "terraform/cluster.tf", "terraform/kubernetes/retrieve-kubeconfig.sh",
         "terraform/kubernetes/*.tf", "terraform/kubernetes/addons/*.yaml",
-        "tests/kubernetes_test.go", "${packer_build.output.version}"
+        "tests/kubernetes_test.go", "VERSION"
     ]
 
-    shell = "VERSION=$(cat $VERSION) go test tests/kubernetes_test.go"
+    shell = "VERSION=$(cat VERSION) go test tests/kubernetes_test.go"
 }
 
 job "terraform_init" {
@@ -39,10 +39,6 @@ job "terraform_init" {
         "terraform/cluster.tf", "terraform/kubernetes/retrieve-kubeconfig.sh",
         "terraform/kubernetes/*.tf", "terraform/kubernetes/addons/*.yaml"
     ]
-
-    outputs = {
-        "directory" = ".terraform"
-    }
 
     shell = "terraform init -input=false terraform/"
 }
@@ -55,15 +51,11 @@ job "terraform_deploy" {
     inputs = [
         "terraform/cluster.tf", "terraform/kubernetes/retrieve-kubeconfig.sh",
         "terraform/kubernetes/*.tf", "terraform/kubernetes/addons/*.yaml",
-        "${terraform_init.output.directory}", "${packer_build.output.version}"
+        "VERSION"
     ]
 
-    env = {
-        "VERSION" = "${packer_build.output.version}"
-    }
-
     shell =  <<EOF
-export TF_VAR_digitalocean_image=$(cat $VERSION)
+export TF_VAR_digitalocean_image=$(cat VERSION)
 terraform apply-input=false -auto-approve terraform/
 EOF
 }

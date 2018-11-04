@@ -105,7 +105,7 @@ job "k8s-farm" {
 
     deps = [ "build" ]
 
-    shell = "./farm examples/helloworld.tf build"
+    shell = "./farm build"
 }
 
 job "hello" {
