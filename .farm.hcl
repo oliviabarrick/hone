@@ -121,6 +121,7 @@ job "k8s-farm" {
         "S3_ENABLED" = "true"
     }
 
+    input = "./farm"
     deps = [ "build" ]
 
     shell = "./farm build"
