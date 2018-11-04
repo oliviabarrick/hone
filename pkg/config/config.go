@@ -60,10 +60,13 @@ func Unmarshal(fname string) (*types.Config, error) {
 		}
 	}
 
+	variables := map[string]cty.Value{}
+	if len(environ) != 0 {
+		variables["environ"] = cty.MapVal(environ)
+	}
+
 	ctx := hcl.EvalContext{
-		Variables: map[string]cty.Value{
-			"environ": cty.MapVal(environ),
-		},
+		Variables: variables,
 	}
 
 	diags = gohcl.DecodeBody(fl.Remain, &ctx, config)
