@@ -2,9 +2,14 @@ package main
 
 import (
 	"github.com/justinbarrick/farm/pkg/cache/s3"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 )
+
+
 
 func main() {
 	s3 := s3cache.S3Cache{
@@ -29,5 +34,32 @@ func main() {
 			log.Fatal(err)
 		}
 		log.Printf("Loaded %s from cache (%s).\n", entry.Filename, s3.Name())
+	}
+
+	cmd := exec.Command(os.Args[1], os.Args[2:]...)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	stdoutT := io.TeeReader(stdout, os.Stdout)
+	stderrT := io.TeeReader(stderr, os.Stderr)
+
+	if err = cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err := io.Copy(ioutil.Discard, io.MultiReader(stdoutT, stderrT)); err != nil {
+		log.Fatal(err)
+	}
+
+	if err = cmd.Wait(); err != nil {
+		log.Fatal(err)
 	}
 }

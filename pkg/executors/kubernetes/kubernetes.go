@@ -1,5 +1,6 @@
 package kubernetes
 
+
 import (
 	"errors"
 	"fmt"
@@ -42,7 +43,12 @@ func Run(c cache.Cache, j *job.Job) error {
 		return err
 	}
 
-	env := []corev1.EnvVar{}
+	env := []corev1.EnvVar{
+		{
+			Name:  "CACHE_KEY",
+			Value: storageCacheKey,
+		},
+	}
 
 	if j.Env != nil {
 		for name, value := range *j.Env {
@@ -74,16 +80,8 @@ func Run(c cache.Cache, j *job.Job) error {
 	}
 	defer clientset.CoreV1().Secrets("u-jbarrick").Delete(secret.Name, &metav1.DeleteOptions{})
 
-	initEnv := []corev1.EnvVar{
-		{
-			Name:  "CACHE_KEY",
-			Value: storageCacheKey,
-		},
-	}
-
-
 	for key, _ := range cacheEnv {
-		initEnv = append(initEnv, corev1.EnvVar{
+		env = append(env, corev1.EnvVar{
 			Name: key,
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -93,7 +91,6 @@ func Run(c cache.Cache, j *job.Job) error {
 			},
 		})
 	}
-
 
 	pod, err := clientset.CoreV1().Pods("u-jbarrick").Create(&corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -123,9 +120,8 @@ func Run(c cache.Cache, j *job.Job) error {
 					Name: "cache-shim",
 					Image: "justinbarrick/cache-shim",
 					ImagePullPolicy: "Always",
-					Command: []string{"/cache-shim",},
+					Command: []string{"/bin/sh", "-c", "cp /cache-shim /build",},
 					WorkingDir: "/build",
-					Env: initEnv,
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "share",
@@ -134,13 +130,15 @@ func Run(c cache.Cache, j *job.Job) error {
 					},
 				},
 			},
+
+
 			Containers: []corev1.Container{
 				{
 					Name:            j.Name,
 					Image:           j.Image,
 					ImagePullPolicy: "IfNotPresent",
 					Command: []string{
-						"/bin/sh", "-cex", j.Shell,
+						"/build/cache-shim", "/bin/sh", "-cex", j.Shell,
 					},
 					WorkingDir: "/build",
 					Env:        env,
@@ -177,12 +175,15 @@ func Run(c cache.Cache, j *job.Job) error {
 			running = true
 		}
 
-		if pod.Status.Phase != "Pending" {
+		if pod.Status.Phase != "Pending" && pod.Status.Phase != "PodInitializing" {
 			break
 		}
 	}
 
-	req := clientset.CoreV1().Pods("u-jbarrick").GetLogs(pod.Name, &corev1.PodLogOptions{})
+	req := clientset.CoreV1().Pods("u-jbarrick").GetLogs(pod.Name, &corev1.PodLogOptions{
+  	Container: j.Name,
+		Follow: true,      
+	})
 
 	readCloser, err := req.Stream()
 	if err != nil {

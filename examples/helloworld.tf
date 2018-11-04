@@ -20,7 +20,7 @@ cache {
 }
 
 job "all" {
-    deps = ["k8s-farm", "build-mac"]
+    deps = ["k8s-farm"]
     image = "alpine"
     shell = "echo all"
 }
@@ -103,11 +103,9 @@ job "k8s-farm" {
         "S3_ENABLED" = "true"
     }
 
-    input = "./farm"
-
     deps = [ "build" ]
 
-    shell = "./farm examples/helloworld.tf build-cache-shim"
+    shell = "./farm examples/helloworld.tf build-mac"
 }
 
 job "hello" {
