@@ -27,7 +27,7 @@ func Run(c cache.Cache, j *job.Job) error {
 
 	d.NegotiateAPIVersion(ctx)
 	args := filters.NewArgs()
-	args.Add("reference", j.Image)
+	args.Add("reference", j.GetImage())
 
 	images, err := d.ImageList(ctx, types.ImageListOptions{
 		Filters: args,
@@ -37,7 +37,7 @@ func Run(c cache.Cache, j *job.Job) error {
 	}
 
 	if len(images) < 1 {
-		reader, err := d.ImagePull(ctx, j.Image, types.ImagePullOptions{})
+		reader, err := d.ImagePull(ctx, j.GetImage(), types.ImagePullOptions{})
 		if err != nil {
 			return err
 		}
@@ -57,11 +57,8 @@ func Run(c cache.Cache, j *job.Job) error {
 	}
 
 	ctr, err := d.ContainerCreate(ctx, &container.Config{
-		Image: j.Image,
-		Cmd: []string{
-			j.Shell,
-		},
-		Entrypoint: []string{"/bin/sh", "-cex"},
+		Image: j.GetImage(),
+		Entrypoint: j.GetShell(),
 		Env:        env,
 		WorkingDir: "/build",
 	}, &container.HostConfig{

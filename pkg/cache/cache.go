@@ -4,11 +4,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/bmatcuk/doublestar"
+	"github.com/cnf/structhash"
 	config "github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 type CacheEntry struct {
@@ -27,19 +29,15 @@ type Cache interface {
 }
 
 func WalkInputs(job *config.Job, fn func(string) error) error {
-	inputs := []string{}
-
-	if job.Inputs != nil {
-		inputs = append(inputs, *job.Inputs...)
-	}
-
-	for _, input := range inputs {
+	for _, input := range job.GetInputs() {
 		inputFile, err := os.Open(input)
 		if err != nil && os.IsNotExist(err) {
 			matches, err := doublestar.Glob(input)
 			if err != nil {
 				return err
 			}
+
+			sort.Strings(matches)
 
 			for _, match := range matches {
 				inputFile, err := os.Open(match)
@@ -94,8 +92,7 @@ func WalkInputs(job *config.Job, fn func(string) error) error {
 func HashJob(job *config.Job) (string, error) {
 	sum := sha256.New()
 
-	sum.Write([]byte(job.Image))
-	sum.Write([]byte(job.Shell))
+	sum.Write(structhash.Sha1(job, 1))
 
 	err := WalkInputs(job, func(path string) error {
 		data, err := ioutil.ReadFile(path)
@@ -165,12 +162,12 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 			logger.Log(job, "Job cached.")
 		}
 
-		if len(*job.Outputs) == 0 && len(*job.Inputs) == 0 {
+		if len(job.GetOutputs()) == 0 && len(job.GetInputs()) == 0 {
 			return nil
 		}
 
 		logger.Log(job, fmt.Sprintf("Dumping to cache (%s).", c.Name()))
-		if _, err = DumpOutputs(cacheKey, c, *job.Outputs); err != nil {
+		if _, err = DumpOutputs(cacheKey, c, job.GetOutputs()); err != nil {
 			return err
 		}
 		return nil

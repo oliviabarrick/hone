@@ -25,7 +25,7 @@ GO111MODULE=on go get -u github.com/justinbarrick/farm/cmd/farm
 # Running
 
 ```
-farm examples/helloworld.tf build
+farm examples/helloworld.hcl build
 ```
 
 # Job specification
@@ -55,18 +55,26 @@ Settings:
 
 * `image`: The image to use.
 * `shell`: Shell commands to run.
+* `exec`: A command to execute without using bash (as a string array).
 * `deps`: A list of jobs that this job depends on.
 * `inputs`: A list of files, directories, or globs that this job depends on.
 * `input`: A file, directory, or glob that this job depends on.
 * `outputs`: A list of files that this job outputs.
 * `output`: A file that this job outputs.
 * `env`: A map of environment variables to add to the job.
+* `engine`: An execution engine to use, defaults to docker or the global engine setting.
 
 # Execution engine
 
-The tool can use Docker or Kubernetes as a backend for executing builds.
+The tool can use the host, Docker or Kubernetes as a backend for executing builds.
 
-Set `engine = "docker"` to use Docker or `engine = "kubernetes"` to use Kubernetes.
+Available engines:
+
+* `docker`: the default, executes in Docker containers.
+* `kubernetes`: run containers in Kubernetes instead of local Docker.
+* `local`: run commands directly on the host without using containers.
+
+You can set the engine globally or on the job (the job's engine setting overrides the global engine setting).
 
 Currently using Kubernetes requires using the S3 cache backend. The Kubernetes namespace and configuration
 file are configurable via the `kubernetes` block:
@@ -132,7 +140,7 @@ cache {
 # Secrets management with Vault
 
 Secrets can be stored in Vault instead of being passed as environment variables. Secrets are first
-loaded as environment variables and then written into Vault if they don't already exist. Secrets
+loaded from environment variables and then written into Vault if they don't already exist. Secrets
 are then exposed to the rest of the farm configuration as environment variables and can be used
 in most blocks, for example secrets can configure your cache:
 
@@ -145,7 +153,7 @@ secrets = [
 ]
 
 env = [
-    "S3_ACCESS_KEY", "S3_SECRET_KEY", "VAULT_TOKEN", "WORKSPACE=dev"
+    "VAULT_TOKEN", "WORKSPACE=dev"
 ]
 
 vault {
@@ -196,3 +204,29 @@ farm secrets.hcl build
 Environments can optionally be defined via the `workspace` setting, which will use
 a different namespace for storing secrets (allowing you to easily switch between a
 development and prod namespace).
+
+# Building Docker images
+
+Kaniko is recommended for building Docker images, a custom Kaniko shim has been built
+to write a Docker configuration using a password and username loaded from the environment.
+
+To use:
+
+```
+env = [
+    "DOCKER_USER", "DOCKER_PASS"
+]
+
+job "docker-build" {
+    image = "justinbarrick/kaniko:latest"
+
+    env = {
+        "DOCKER_USER" = "${environ.DOCKER_USER}",
+        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
+    }
+
+    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${environ.DOCKER_USER}/:latest"
+}
+```
+
+You can also set `DOCKER_REGISTRY` to use a different Docker registry.

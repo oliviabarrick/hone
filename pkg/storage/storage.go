@@ -13,6 +13,10 @@ func UploadInputs(c cache.Cache, j *job.Job) (string, error) {
 		if err != nil {
 			return err
 		}
+		err = cacheEntry.LoadAttrs()
+		if err != nil {
+			return err
+		}
 		entries = append(entries, cacheEntry)
 		return nil
 	})

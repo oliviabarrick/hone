@@ -6,4 +6,5 @@
 ./farm
 farm_darwin
 *.swp
+docker/kaniko
 docker/cache-shim

@@ -25,7 +25,7 @@ func (v *Vault) Init() error {
 	return nil
 }
 
-func (v *Vault) LoadSecrets(workspace string, secrets []string, env map[string]string) (map[string]string, error) {
+func (v *Vault) LoadSecrets(workspace string, secrets []string) (map[string]string, error) {
 	secretMap := map[string]string{}
 	secretPath := fmt.Sprintf("secret/data/farm/%s", workspace)
 	c := v.client.Logical()
@@ -44,7 +44,7 @@ func (v *Vault) LoadSecrets(workspace string, secrets []string, env map[string]s
 	}
 
 	for _, secret := range secrets {
-		secretMap[secret] = env[secret]
+		secretMap[secret] = os.Getenv(secret)
 		secretValue := secretValuesMap[secret]
 		if secretValue != "" {
 			secretMap[secret] = secretValue

@@ -121,6 +121,9 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 		})
 	}
 
+	cmdLine := []string{"/build/cache-shim",}
+	cmdLine = append(cmdLine, j.GetShell()...)
+
 	pod, err := clientset.CoreV1().Pods(namespace).Create(&corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -159,16 +162,12 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 					},
 				},
 			},
-
-
 			Containers: []corev1.Container{
 				{
 					Name:            j.Name,
-					Image:           j.Image,
+					Image:           j.GetImage(),
 					ImagePullPolicy: "IfNotPresent",
-					Command: []string{
-						"/build/cache-shim", "/bin/sh", "-cex", j.Shell,
-					},
+					Command: cmdLine,
 					WorkingDir: "/build",
 					Env:        env,
 					VolumeMounts: []corev1.VolumeMount{

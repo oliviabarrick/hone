@@ -3,8 +3,7 @@ package main
 import (
 	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/config"
-	"github.com/justinbarrick/farm/pkg/executors/docker"
-	"github.com/justinbarrick/farm/pkg/executors/kubernetes"
+	"github.com/justinbarrick/farm/pkg/executors"
 	"github.com/justinbarrick/farm/pkg/graph"
 	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
@@ -28,24 +27,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	orchestratorCb := docker.Run
-	if config.Engine != nil && *config.Engine == "kubernetes" {
-		if config.Cache.S3 == nil {
-			log.Fatal("Kubernetes is not currently supported without an S3 configuration.")
-		}
-
-		k := kubernetes.Kubernetes{}
-		if config.Kubernetes == nil {
-			k = *config.Kubernetes
-		}
-
-		orchestratorCb = k.Run
-		logger.Printf("Using Kubernetes for running jobs.\n")
-	} else {
-		logger.Printf("Using Docker for running jobs.\n")
-	}
-
 	callback := func(j *job.Job) error {
+		orchestratorCb, err := executors.ChooseEngine(config, j)
+		if err != nil {
+			return err
+		}
+
 		return orchestratorCb(config.Cache.S3, j)
 	}
 

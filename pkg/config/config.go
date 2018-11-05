@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
@@ -96,7 +95,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 				return nil, err
 			}
 
-			secrets, err := sl.Vault.LoadSecrets(workspace, *fl.Secrets, envVars)
+			secrets, err := sl.Vault.LoadSecrets(workspace, *fl.Secrets)
 			if err != nil {
 				return nil, err
 			}
@@ -119,32 +118,16 @@ func Unmarshal(fname string) (*types.Config, error) {
 		return nil, err
 	}
 
-	for _, job := range config.Jobs {
-		if !strings.Contains(job.Image, ":") {
-			job.Image = fmt.Sprintf("%s:latest", job.Image)
-		}
-
-		if job.Inputs == nil {
-			job.Inputs = &[]string{}
-		}
-		if job.Input != nil {
-			*job.Inputs = append(*job.Inputs, *job.Input)
-		}
-
-		if job.Outputs == nil {
-			job.Outputs = &[]string{}
-		}
-		if job.Output != nil {
-			*job.Outputs = append(*job.Outputs, *job.Output)
-		}
-	}
-
 	if config.Cache == nil {
 		config.Cache = &types.CacheConfig{}
 	}
 
 	if config.Cache.File == nil {
 		config.Cache.File = &filecache.FileCache{}
+	}
+
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
 	return config, nil

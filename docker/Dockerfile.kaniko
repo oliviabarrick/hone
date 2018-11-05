@@ -1,0 +1,8 @@
+FROM gcr.io/kaniko-project/executor:latest
+
+FROM alpine
+
+RUN apk update && apk add ca-certificates
+
+COPY --from=0 /kaniko/executor /executor
+COPY kaniko /bin/kaniko

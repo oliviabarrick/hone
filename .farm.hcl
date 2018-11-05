@@ -1,6 +1,8 @@
 secrets = [
     "S3_ACCESS_KEY",
-    "S3_SECRET_KEY"
+    "S3_SECRET_KEY",
+    "DOCKER_USER",
+    "DOCKER_PASS"
 ]
 
 env = [
@@ -10,6 +12,8 @@ env = [
     "S3_ENABLED=true",
     "S3_ACCESS_KEY",
     "S3_SECRET_KEY",
+    "DOCKER_USER",
+    "DOCKER_PASS",
     "WORKSPACE=dev",
     "VAULT_ADDR=http://127.0.0.1:8200/",
     "VAULT_TOKEN"
@@ -37,12 +41,6 @@ cache {
     }
 }
 
-job "all" {
-    deps = ["k8s-farm"]
-    image = "alpine"
-    shell = "echo all"
-}
-
 job "test" {
     image = "golang:1.11.2"
 
@@ -55,22 +53,6 @@ job "test" {
     }
 
     shell = "go test ./cmd/... ./pkg/..."
-}
-
-job "build-cache-shim" {
-    image = "golang:1.11.2"
-
-    env = {
-        "GO111MODULE" = "on"
-        "GOCACHE" = "/build/.gocache"
-        "GOPATH" = "/build/.go"
-        "CGO_ENABLED" = "0"
-    }
-
-    inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "./docker/cache-shim"
-
-    shell = "go build -ldflags '-w -extldflags -static' -o ./docker/cache-shim ./cmd/cache-shim"
 }
 
 job "build" {
@@ -108,45 +90,89 @@ job "build-mac" {
     shell = "go build -v -o ./farm_darwin ./cmd/farm"
 }
 
-job "k8s-farm" {
+job "build-kaniko-shim" {
     image = "golang:1.11.2"
 
     env = {
-        "KUBECONFIG" = "/build/.kubeconfig"
-        "ENGINE" = "kubernetes"
-        "S3_ACCESS_KEY" = "${environ.S3_ACCESS_KEY}"
-        "S3_SECRET_KEY" = "${environ.S3_SECRET_KEY}"
-        "S3_ENDPOINT" = "${environ.S3_ENDPOINT}"
-        "S3_BUCKET" = "${environ.S3_BUCKET}"
-        "S3_ENABLED" = "true"
+        "GO111MODULE" = "on"
+        "GOCACHE" = "/build/.gocache"
+        "GOPATH" = "/build/.go"
     }
 
-    input = "./farm"
-    deps = [ "build" ]
+    inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
+    output = "docker/kaniko"
 
-    shell = "./farm build"
+    shell = "go build -v -o ./docker/kaniko ./cmd/kaniko"
 }
 
-job "hello" {
-    image = "debian:stretch"
+job "build-kaniko-shim-image" {
+    image = "justinbarrick/kaniko:latest"
 
-    output = "hello"
+    deps = ["build-kaniko-shim"]
+    inputs = ["docker/Dockerfile.kaniko", "docker/kaniko"]
 
-    shell = "echo hilol > hello"
-}
-
-job "world" {
-    image = "debian:stretch"
-
-    deps = ["hello"]
-
-    outputs = [
-        "lol"
-    ]
-
-    inputs = ["hello"]
+    env = {
+        "DOCKER_USER" = "${environ.DOCKER_USER}",
+        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
+    }
 
     shell = <<EOF
-cat hello > lol
+kaniko --dockerfile=docker/Dockerfile.kaniko --context=/build/docker/ \
+    --destination=${environ.DOCKER_USER}/kaniko:latest
 EOF
+
+    engine = "kubernetes"
+}
+
+job "build-cache-shim" {
+    image = "golang:1.11.2"
+
+    env = {
+        "GO111MODULE" = "on"
+        "GOCACHE" = "/build/.gocache"
+        "GOPATH" = "/build/.go"
+        "CGO_ENABLED" = "0"
+    }
+
+    inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
+    output = "./docker/cache-shim"
+
+    shell = "go build -ldflags '-w -extldflags -static' -o ./docker/cache-shim ./cmd/cache-shim"
+}
+
+job "build-cache-shim-image" {
+    image = "justinbarrick/kaniko:latest"
+
+    deps = ["build-cache-shim"]
+    inputs = ["docker/Dockerfile.cache-shim", "docker/cache-shim"]
+
+    env = {
+        "DOCKER_USER" = "${environ.DOCKER_USER}",
+        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
+    }
+
+    shell = <<EOF
+kaniko --dockerfile=docker/Dockerfile.cache-shim --context=/build/docker/ \
+    --destination=${environ.DOCKER_USER}/cache-shim:latest
+EOF
+
+    engine = "kubernetes"
+}
+
+job "images" {
+    deps = ["build-cache-shim-image", "build-kaniko-shim-image"]
+    image = "alpine"
+    shell = "echo images"
+}
+
+job "binaries" {
+    deps = ["build-cache-shim", "build-kaniko-shim", "build", "build-mac"]
+    image = "alpine"
+    shell = "echo binaries"
+}
+
+job "all" {
+    deps = ["images", "binaries"]
+    image = "alpine"
+    shell = "echo all"
 }
