@@ -14,15 +14,15 @@ import (
 )
 
 type FirstLoad struct {
-	Env    *[]string `hcl:"env"`
+	Env     *[]string `hcl:"env"`
 	Secrets *[]string `hcl:"secrets"`
-	Remain hcl.Body  `hcl:",remain"`
+	Remain  hcl.Body  `hcl:",remain"`
 }
 
 type SecondLoad struct {
-	Workspace    *string `hcl:"workspace"`
-	Vault        *vault.Vault `hcl:"vault,block"`
-	Remain hcl.Body  `hcl:",remain"`
+	Workspace *string      `hcl:"workspace"`
+	Vault     *vault.Vault `hcl:"vault,block"`
+	Remain    hcl.Body     `hcl:",remain"`
 }
 
 func checkErrors(parser *hclparse.Parser, diagnostics hcl.Diagnostics) error {

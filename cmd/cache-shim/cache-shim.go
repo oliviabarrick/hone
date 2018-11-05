@@ -2,18 +2,18 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/justinbarrick/farm/pkg/logger"
-	"github.com/justinbarrick/farm/pkg/executors/local"
 	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/cache/s3"
+	"github.com/justinbarrick/farm/pkg/executors/local"
+	"github.com/justinbarrick/farm/pkg/logger"
 	"log"
 	"os"
 )
 
 func main() {
 	s3 := s3cache.S3Cache{
-		Bucket: os.Getenv("S3_BUCKET"),
-		Endpoint: os.Getenv("S3_ENDPOINT"),
+		Bucket:    os.Getenv("S3_BUCKET"),
+		Endpoint:  os.Getenv("S3_ENDPOINT"),
 		AccessKey: os.Getenv("S3_ACCESS_KEY"),
 		SecretKey: os.Getenv("S3_SECRET_KEY"),
 	}

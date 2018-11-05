@@ -1,15 +1,15 @@
 package vault
 
 import (
-	"github.com/hashicorp/vault/api"
-	"fmt"
 	"errors"
+	"fmt"
+	"github.com/hashicorp/vault/api"
 )
 
 type Vault struct {
 	Address string `hcl:"address"`
-	Token string `hcl:"token"`
-	client *api.Client
+	Token   string `hcl:"token"`
+	client  *api.Client
 }
 
 func (v *Vault) Init() error {
@@ -19,7 +19,7 @@ func (v *Vault) Init() error {
 	if err != nil {
 		return err
 	}
-	
+
 	v.client = client
 	v.client.SetToken(v.Token)
 	return nil

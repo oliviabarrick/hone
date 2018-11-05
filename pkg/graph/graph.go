@@ -1,4 +1,3 @@
-
 package graph
 
 import (

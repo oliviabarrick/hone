@@ -25,7 +25,7 @@ func Exec(command []string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	stdoutT := io.TeeReader(stdout, os.Stdout)
 	stderrT := io.TeeReader(stderr, os.Stderr)
 

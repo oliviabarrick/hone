@@ -153,7 +153,7 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 			return err
 		}
 
-		if ! cached {
+		if !cached {
 			err = callback(job)
 			if err != nil {
 				return err

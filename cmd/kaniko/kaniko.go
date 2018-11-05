@@ -1,12 +1,12 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"github.com/justinbarrick/farm/pkg/executors/local"
 	"log"
 	"os"
-	"fmt"
-	"encoding/base64"
-	"encoding/json"
 )
 
 type DockerAuth struct {
@@ -52,7 +52,7 @@ func main() {
 		}
 	}
 
-	args := []string{"/executor",}
+	args := []string{"/executor"}
 	if len(os.Args) > 1 {
 		args = append(args, os.Args[1:]...)
 	}

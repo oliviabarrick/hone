@@ -3,11 +3,11 @@ package executors
 import (
 	"errors"
 	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/config/types"
 	"github.com/justinbarrick/farm/pkg/executors/docker"
-	"github.com/justinbarrick/farm/pkg/executors/local"
 	"github.com/justinbarrick/farm/pkg/executors/kubernetes"
+	"github.com/justinbarrick/farm/pkg/executors/local"
+	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
 )
 

@@ -225,7 +225,7 @@ job "docker-build" {
         "DOCKER_PASS" = "${environ.DOCKER_PASS}",
     }
 
-    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${environ.DOCKER_USER}/:latest"
+    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${environ.DOCKER_USER}/image:latest"
 }
 ```
 

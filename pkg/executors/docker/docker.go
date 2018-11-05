@@ -57,7 +57,7 @@ func Run(c cache.Cache, j *job.Job) error {
 	}
 
 	ctr, err := d.ContainerCreate(ctx, &container.Config{
-		Image: j.GetImage(),
+		Image:      j.GetImage(),
 		Entrypoint: j.GetShell(),
 		Env:        env,
 		WorkingDir: "/build",

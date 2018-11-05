@@ -1,25 +1,25 @@
 package job
 
 import (
-	"github.com/justinbarrick/farm/pkg/utils"
-	"strings"
 	"errors"
 	"fmt"
+	"github.com/justinbarrick/farm/pkg/utils"
+	"strings"
 )
 
 type Job struct {
 	Name    string             `hcl:"name,label"`
 	Image   string             `hcl:"image"`
-	Shell   *string             `hcl:"shell"`
-	Exec    *[]string             `hcl:"exec"`
+	Shell   *string            `hcl:"shell"`
+	Exec    *[]string          `hcl:"exec"`
 	Inputs  *[]string          `hcl:"inputs"`
 	Input   *string            `hcl:"input"`
 	Outputs *[]string          `hcl:"outputs"`
 	Output  *string            `hcl:"output"`
 	Env     *map[string]string `hcl:"env"`
 	Deps    *[]string          `hcl:"deps"`
-	Engine *string `hcl:"engine",hash:"-"`
-	Error   error `hash:"-"`
+	Engine  *string            `hcl:"engine",hash:"-"`
+	Error   error              `hash:"-"`
 }
 
 func (j Job) Validate(engine string) error {
@@ -44,49 +44,49 @@ func (j Job) ID() int64 {
 }
 
 func (j Job) GetImage() string {
-    if ! strings.Contains(j.Image, ":") {
-        j.Image = fmt.Sprintf("%s:latest", j.Image)
-    }
+	if !strings.Contains(j.Image, ":") {
+		j.Image = fmt.Sprintf("%s:latest", j.Image)
+	}
 
-    return j.Image
+	return j.Image
 }
 
 func (j Job) GetOutputs() []string {
-    outputs := []string{}
+	outputs := []string{}
 
-    if j.Outputs != nil {
-        outputs = *j.Outputs
-    }
+	if j.Outputs != nil {
+		outputs = *j.Outputs
+	}
 
-    if j.Output != nil {
-        outputs = append(outputs, *j.Output)
-    }
+	if j.Output != nil {
+		outputs = append(outputs, *j.Output)
+	}
 
-    return outputs
+	return outputs
 }
 
 func (j Job) GetInputs() []string {
-    inputs := []string{}
+	inputs := []string{}
 
-    if j.Inputs != nil {
-        inputs = *j.Inputs
-    }
+	if j.Inputs != nil {
+		inputs = *j.Inputs
+	}
 
-    if j.Input != nil {
-        inputs = append(inputs, *j.Input)
-    }
+	if j.Input != nil {
+		inputs = append(inputs, *j.Input)
+	}
 
-    return inputs
+	return inputs
 }
 
 func (j Job) GetShell() []string {
-    if j.Exec != nil {
-        return *j.Exec
-    } else {
-        return []string{
-            "/bin/sh", "-cex", *j.Shell,
-        }
-    }
+	if j.Exec != nil {
+		return *j.Exec
+	} else {
+		return []string{
+			"/bin/sh", "-cex", *j.Shell,
+		}
+	}
 }
 
 func (j Job) GetEngine() string {

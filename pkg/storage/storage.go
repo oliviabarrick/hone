@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/cache"
+	"github.com/justinbarrick/farm/pkg/job"
 )
 
 func UploadInputs(c cache.Cache, j *job.Job) (string, error) {
@@ -29,7 +29,6 @@ func UploadInputs(c cache.Cache, j *job.Job) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 
 	err = c.DumpCacheManifest("srcs_manifests", cacheKey, entries)
 	if err != nil {

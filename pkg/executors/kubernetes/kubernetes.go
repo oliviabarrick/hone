@@ -1,14 +1,13 @@
 package kubernetes
 
-
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/justinbarrick/farm/pkg/storage"
 	"github.com/justinbarrick/farm/pkg/cache"
 	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/justinbarrick/farm/pkg/storage"
 	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +19,7 @@ import (
 )
 
 type Kubernetes struct {
-	Namespace *string `hcl:"namespace"`
+	Namespace  *string `hcl:"namespace"`
 	Kubeconfig *string `hcl:"kubeconfig"`
 }
 
@@ -65,11 +64,11 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			Value: storageCacheKey,
 		},
 		{
-			Name: "OUTPUTS",
+			Name:  "OUTPUTS",
 			Value: string(outputs),
 		},
 		{
-			Name: "CA_FILE",
+			Name:  "CA_FILE",
 			Value: "/build/.farm-ca-certificates.crt",
 		},
 	}
@@ -115,13 +114,13 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{Name: secret.Name},
-					Key: key,
+					Key:                  key,
 				},
 			},
 		})
 	}
 
-	cmdLine := []string{"/build/cache-shim",}
+	cmdLine := []string{"/build/cache-shim"}
 	cmdLine = append(cmdLine, j.GetShell()...)
 
 	pod, err := clientset.CoreV1().Pods(namespace).Create(&corev1.Pod{
@@ -149,11 +148,11 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			},
 			InitContainers: []corev1.Container{
 				{
-					Name: "cache-shim",
-					Image: "justinbarrick/cache-shim",
+					Name:            "cache-shim",
+					Image:           "justinbarrick/cache-shim",
 					ImagePullPolicy: "Always",
-					Command: []string{"/bin/sh", "-c", "cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.farm-ca-certificates.crt",},
-					WorkingDir: "/build",
+					Command:         []string{"/bin/sh", "-c", "cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.farm-ca-certificates.crt"},
+					WorkingDir:      "/build",
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "share",
@@ -167,9 +166,9 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 					Name:            j.Name,
 					Image:           j.GetImage(),
 					ImagePullPolicy: "IfNotPresent",
-					Command: cmdLine,
-					WorkingDir: "/build",
-					Env:        env,
+					Command:         cmdLine,
+					WorkingDir:      "/build",
+					Env:             env,
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "share",
@@ -209,8 +208,8 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	}
 
 	req := clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
-  	Container: j.Name,
-		Follow: true,      
+		Container: j.Name,
+		Follow:    true,
 	})
 
 	readCloser, err := req.Stream()

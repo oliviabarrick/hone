@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"github.com/justinbarrick/farm/pkg/cache/file"
 	"github.com/justinbarrick/farm/pkg/cache/s3"
-	"github.com/justinbarrick/farm/pkg/job"
 	"github.com/justinbarrick/farm/pkg/executors/kubernetes"
+	"github.com/justinbarrick/farm/pkg/job"
 )
 
 type Config struct {
-	Jobs   []*job.Job   `hcl:"job,block"`
-	Cache  *CacheConfig `hcl:"cache,block"`
+	Jobs       []*job.Job             `hcl:"job,block"`
+	Cache      *CacheConfig           `hcl:"cache,block"`
 	Kubernetes *kubernetes.Kubernetes `hcl:"kubernetes,block"`
-	Engine *string      `hcl:"engine"`
+	Engine     *string                `hcl:"engine"`
 }
 
 type CacheConfig struct {
