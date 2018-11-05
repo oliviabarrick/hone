@@ -22,10 +22,10 @@ env = [
 workspace = "${environ.WORKSPACE}"
 engine = "${environ.ENGINE}"
 
-#vault {
-#    address = "${environ.VAULT_ADDR}"
-#    token = "${environ.VAULT_TOKEN}"
-#}
+vault {
+    address = "${environ.VAULT_ADDR}"
+    token = "${environ.VAULT_TOKEN}"
+}
 
 kubernetes {
     namespace = "default"
