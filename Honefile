@@ -7,7 +7,7 @@ secrets = [
 
 env = [
     "ENGINE=docker",
-    "S3_BUCKET=farm-cache-bucket",
+    "S3_BUCKET=hone-cache-bucket",
     "S3_ENDPOINT=nyc3.digitaloceanspaces.com",
     "S3_ENABLED=true",
     "S3_ACCESS_KEY",
@@ -22,10 +22,10 @@ env = [
 workspace = "${environ.WORKSPACE}"
 engine = "${environ.ENGINE}"
 
-vault {
-    address = "${environ.VAULT_ADDR}"
-    token = "${environ.VAULT_TOKEN}"
-}
+#vault {
+#    address = "${environ.VAULT_ADDR}"
+#    token = "${environ.VAULT_TOKEN}"
+#}
 
 kubernetes {
     namespace = "default"
@@ -67,9 +67,9 @@ job "build" {
     }
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "farm"
+    output = "hone"
 
-    shell = "go build -v -o ./farm ./cmd/farm"
+    shell = "go build -v -o ./hone ./cmd/hone"
 }
 
 job "build-mac" {
@@ -85,9 +85,9 @@ job "build-mac" {
     }
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "farm_darwin"
+    output = "hone_darwin"
 
-    shell = "go build -v -o ./farm_darwin ./cmd/farm"
+    shell = "go build -v -o ./hone_darwin ./cmd/hone"
 }
 
 job "build-kaniko-shim" {

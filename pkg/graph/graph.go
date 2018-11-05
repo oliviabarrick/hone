@@ -3,9 +3,9 @@ package graph
 import (
 	"errors"
 	"fmt"
-	config "github.com/justinbarrick/farm/pkg/job"
-	"github.com/justinbarrick/farm/pkg/logger"
-	"github.com/justinbarrick/farm/pkg/utils"
+	config "github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/utils"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"

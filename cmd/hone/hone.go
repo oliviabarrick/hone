@@ -1,28 +1,28 @@
 package main
 
 import (
-	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/config"
-	"github.com/justinbarrick/farm/pkg/executors"
-	"github.com/justinbarrick/farm/pkg/graph"
-	"github.com/justinbarrick/farm/pkg/job"
-	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/config"
+	"github.com/justinbarrick/hone/pkg/executors"
+	"github.com/justinbarrick/hone/pkg/graph"
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"log"
 	"os"
 )
 
 func main() {
-	farmPath := ".farm.hcl"
+	honePath := "Honefile"
 	target := "all"
 
 	if len(os.Args) == 2 {
 		target = os.Args[1]
 	} else if len(os.Args) == 3 {
-		farmPath = os.Args[1]
+		honePath = os.Args[1]
 		target = os.Args[2]
 	}
 
-	config, err := config.Unmarshal(farmPath)
+	config, err := config.Unmarshal(honePath)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/job"
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/job"
 )
 
 func UploadInputs(c cache.Cache, j *job.Job) (string, error) {

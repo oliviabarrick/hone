@@ -1,4 +1,4 @@
-module github.com/justinbarrick/farm
+module github.com/justinbarrick/hone
 
 require (
 	github.com/bmatcuk/doublestar v1.1.1

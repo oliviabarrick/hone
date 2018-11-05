@@ -10,9 +10,9 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/job"
-	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"io"
 	"os"
 )

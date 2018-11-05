@@ -1,10 +1,10 @@
 .kubeconfig
-.farm_cache
+.hone_cache
 .go
 .gocache
 .gocachedarwin
-./farm
-farm_darwin
+./hone
+hone_darwin
 *.swp
 docker/kaniko
 docker/cache-shim

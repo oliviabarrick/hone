@@ -2,7 +2,7 @@ package logger
 
 import (
 	"fmt"
-	config "github.com/justinbarrick/farm/pkg/job"
+	config "github.com/justinbarrick/hone/pkg/job"
 	"github.com/kvz/logstreamer"
 	"io"
 	"log"

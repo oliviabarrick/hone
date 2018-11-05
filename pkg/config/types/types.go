@@ -3,10 +3,10 @@ package types
 import (
 	"errors"
 	"fmt"
-	"github.com/justinbarrick/farm/pkg/cache/file"
-	"github.com/justinbarrick/farm/pkg/cache/s3"
-	"github.com/justinbarrick/farm/pkg/executors/kubernetes"
-	"github.com/justinbarrick/farm/pkg/job"
+	"github.com/justinbarrick/hone/pkg/cache/file"
+	"github.com/justinbarrick/hone/pkg/cache/s3"
+	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
+	"github.com/justinbarrick/hone/pkg/job"
 )
 
 type Config struct {

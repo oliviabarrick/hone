@@ -1,3 +1,7 @@
+env = [
+    "LOL=LOL"
+]
+
 job "test" {
     image = "golang:1.11.2"
 
@@ -17,6 +21,7 @@ job "build" {
 
     image = "golang:1.11.2"
 
+
     env = {
         "GO111MODULE" = "on"
         "GOCACHE" = "/build/.gocache"
@@ -24,7 +29,7 @@ job "build" {
     }
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "farm"
+    output = "hone"
 
-    shell = "go build -v -o ./farm ./cmd/farm"
+    shell = "go build -v -o ./hone ./cmd/hone"
 }

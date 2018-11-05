@@ -2,13 +2,13 @@ package executors
 
 import (
 	"errors"
-	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/config/types"
-	"github.com/justinbarrick/farm/pkg/executors/docker"
-	"github.com/justinbarrick/farm/pkg/executors/kubernetes"
-	"github.com/justinbarrick/farm/pkg/executors/local"
-	"github.com/justinbarrick/farm/pkg/job"
-	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/config/types"
+	"github.com/justinbarrick/hone/pkg/executors/docker"
+	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
+	"github.com/justinbarrick/hone/pkg/executors/local"
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
 )
 
 func ChooseEngine(config *types.Config, j *job.Job) (func(cache.Cache, *job.Job) error, error) {

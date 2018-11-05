@@ -4,7 +4,7 @@ Kubernetes.
 
 # Design
 
-* Remote state, farm calculates a desired build state by creating a DAG of build resources
+* Remote state, hone calculates a desired build state by creating a DAG of build resources
   using the paths and hashes of input files. This state is stored in a remote store so that
   it can be compared against the local filesystem wherever it is ran.
 * A single build step is called a "job" and will be provided with its input files and
@@ -19,13 +19,30 @@ Kubernetes.
 # Building
 
 ```
-GO111MODULE=on go get -u github.com/justinbarrick/farm/cmd/farm
+GO111MODULE=on go get -u github.com/justinbarrick/hone/cmd/hone
 ```
 
 # Running
 
 ```
-farm examples/helloworld.hcl build
+hone examples/helloworld.hcl build
+```
+
+# Configuration
+
+With no argumentsn, hone loads the configuration from `Honefile` in the local directory and the
+`all` target.
+
+A single argument to hone specifies which target to use:
+
+```
+hone build
+```
+
+You can specify an alternative Honefile as well:
+
+```
+hone examples/helloworld.hcl build
 ```
 
 # Job specification
@@ -141,7 +158,7 @@ cache {
 
 Secrets can be stored in Vault instead of being passed as environment variables. Secrets are first
 loaded from environment variables and then written into Vault if they don't already exist. Secrets
-are then exposed to the rest of the farm configuration as environment variables and can be used
+are then exposed to the rest of the hone configuration as environment variables and can be used
 in most blocks, for example secrets can configure your cache:
 
 ```
@@ -185,20 +202,20 @@ Start a vault instance:
 docker run --cap-add=IPC_LOCK -p 8200 --name=dev-vault vault
 ```
 
-Take the root token from the vault logs and invoke farm:
+Take the root token from the vault logs and invoke hone:
 
 ```
 export VAULT_TOKEN=$TOKEN
 export S3_ACCESS_KEY="myaccesskey"
 export S3_SECRET_KEY="mysecretkey"
-farm secrets.hcl build
+hone secrets.hcl build
 ```
 
 Future runs will only require the vault token:
 
 ```
 export VAULT_TOKEN=$TOKEN
-farm secrets.hcl build
+hone secrets.hcl build
 ```
 
 Environments can optionally be defined via the `workspace` setting, which will use

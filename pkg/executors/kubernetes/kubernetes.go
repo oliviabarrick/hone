@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/job"
-	"github.com/justinbarrick/farm/pkg/logger"
-	"github.com/justinbarrick/farm/pkg/storage"
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/storage"
 	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,7 +69,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 		},
 		{
 			Name:  "CA_FILE",
-			Value: "/build/.farm-ca-certificates.crt",
+			Value: "/build/.hone-ca-certificates.crt",
 		},
 	}
 
@@ -96,7 +96,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			Name:      j.Name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"farm/target": j.Name,
+				"hone/target": j.Name,
 			},
 		},
 		StringData: cacheEnv,
@@ -130,7 +130,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			Name:      j.Name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"farm/target": j.Name,
+				"hone/target": j.Name,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -149,7 +149,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 					Name:            "cache-shim",
 					Image:           "justinbarrick/cache-shim",
 					ImagePullPolicy: "Always",
-					Command:         []string{"/bin/sh", "-c", "cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.farm-ca-certificates.crt"},
+					Command:         []string{"/bin/sh", "-c", "cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.hone-ca-certificates.crt"},
 					WorkingDir:      "/build",
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -184,7 +184,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	defer clientset.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 
 	watcher, err := clientset.CoreV1().Pods(namespace).Watch(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("farm/target=%s", j.Name),
+		LabelSelector: fmt.Sprintf("hone/target=%s", j.Name),
 	})
 	if err != nil {
 		return err

@@ -2,8 +2,8 @@ package filecache
 
 import (
 	"encoding/json"
-	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,7 +15,7 @@ type FileCache struct {
 
 func (c *FileCache) Init() error {
 	if c.CacheDir == "" {
-		c.CacheDir = ".farm_cache"
+		c.CacheDir = ".hone_cache"
 	}
 
 	err := os.Mkdir(c.CacheDir, 0777)

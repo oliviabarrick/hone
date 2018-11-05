@@ -28,7 +28,7 @@ func (v *Vault) Init() error {
 
 func (v *Vault) LoadSecrets(workspace string, secrets []string) (map[string]string, error) {
 	secretMap := map[string]string{}
-	secretPath := fmt.Sprintf("secret/data/farm/%s", workspace)
+	secretPath := fmt.Sprintf("secret/data/hone/%s", workspace)
 	c := v.client.Logical()
 
 	secretValues, err := c.Read(secretPath)

@@ -1,8 +1,8 @@
 package local
 
 import (
-	"github.com/justinbarrick/farm/pkg/cache"
-	"github.com/justinbarrick/farm/pkg/job"
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/job"
 	"io"
 	"io/ioutil"
 	"os"
