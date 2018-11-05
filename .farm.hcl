@@ -15,7 +15,7 @@ env = [
     "DOCKER_USER",
     "DOCKER_PASS",
     "WORKSPACE=dev",
-    "VAULT_ADDR=http://127.0.0.1:8200/",
+    "VAULT_ADDR=https://vault.codesink.net/",
     "VAULT_TOKEN"
 ]
 
