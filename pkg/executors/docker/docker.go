@@ -45,10 +45,8 @@ func Run(c cache.Cache, j *job.Job) error {
 	}
 
 	env := []string{}
-	if j.Env != nil {
-		for name, value := range *j.Env {
-			env = append(env, fmt.Sprintf("%s=%s", name, value))
-		}
+	for name, value := range j.GetEnv() {
+		env = append(env, fmt.Sprintf("%s=%s", name, value))
 	}
 
 	cwd, err := os.Getwd()

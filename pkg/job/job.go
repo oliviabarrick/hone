@@ -9,7 +9,7 @@ import (
 
 type Job struct {
 	Name    string             `hcl:"name,label"`
-	Image   string             `hcl:"image"`
+	Image   *string             `hcl:"image"`
 	Shell   *string            `hcl:"shell"`
 	Exec    *[]string          `hcl:"exec"`
 	Inputs  *[]string          `hcl:"inputs"`
@@ -18,7 +18,7 @@ type Job struct {
 	Output  *string            `hcl:"output"`
 	Env     *map[string]string `hcl:"env"`
 	Deps    *[]string          `hcl:"deps"`
-	Engine  *string            `hcl:"engine",hash:"-"`
+	Engine  *string            `hcl:"engine" hash:"-"`
 	Error   error              `hash:"-"`
 }
 
@@ -28,7 +28,7 @@ func (j Job) Validate(engine string) error {
 		myEngine = engine
 	}
 
-	if j.Image == "" && engine != "local" {
+	if j.Image == nil && myEngine != "local" {
 		return errors.New("Image is required when engine is not local.")
 	}
 
@@ -44,11 +44,13 @@ func (j Job) ID() int64 {
 }
 
 func (j Job) GetImage() string {
-	if !strings.Contains(j.Image, ":") {
-		j.Image = fmt.Sprintf("%s:latest", j.Image)
+	image := *j.Image
+
+	if !strings.Contains(image, ":") {
+		image = fmt.Sprintf("%s:latest", image)
 	}
 
-	return j.Image
+	return image
 }
 
 func (j Job) GetOutputs() []string {
@@ -95,4 +97,11 @@ func (j Job) GetEngine() string {
 	} else {
 		return ""
 	}
+}
+
+func (j Job) GetEnv() map[string]string {
+	if j.Env == nil {
+		return map[string]string{}
+	}
+	return *j.Env
 }

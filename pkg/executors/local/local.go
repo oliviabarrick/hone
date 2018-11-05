@@ -7,14 +7,33 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
+	"fmt"
 )
 
 func Run(c cache.Cache, j *job.Job) error {
-	return Exec(j.GetShell())
+	return Exec(j.GetShell(), j.GetEnv())
 }
 
-func Exec(command []string) error {
+func ParseEnv(env []string) map[string]string {
+	envMap := map[string]string{}
+
+	for _, envVar := range env {
+		envSplit := strings.SplitN(envVar, "=", 2)
+		envMap[envSplit[0]] = envSplit[1]
+	}
+
+	return envMap
+}
+
+func Exec(command []string, env map[string]string) error {
 	cmd := exec.Command(command[0], command[1:]...)
+
+	envList := []string{}
+	for k, v := range env {
+		envList = append(envList, fmt.Sprintf("%s=%s", k, v))
+	}
+	cmd.Env = envList
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

@@ -73,13 +73,11 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 		},
 	}
 
-	if j.Env != nil {
-		for name, value := range *j.Env {
-			env = append(env, corev1.EnvVar{
-				Name:  name,
-				Value: value,
-			})
-		}
+	for name, value := range j.GetEnv() {
+		env = append(env, corev1.EnvVar{
+			Name:  name,
+			Value: value,
+		})
 	}
 
 	cacheEnv := c.Env()

@@ -45,7 +45,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err = local.Exec(os.Args[1:]); err != nil {
+	os.Unsetenv("S3_BUCKET")
+	os.Unsetenv("S3_ENDPOINT")
+	os.Unsetenv("S3_ACCESS_KEY")
+	os.Unsetenv("S3_SECRET_KEY")
+	os.Unsetenv("CACHE_KEY")
+	os.Unsetenv("OUTPUTS")
+
+	if err = local.Exec(os.Args[1:], local.ParseEnv(os.Environ())); err != nil {
 		log.Fatal(err)
 	}
 
