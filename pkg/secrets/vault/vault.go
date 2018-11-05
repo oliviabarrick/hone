@@ -3,6 +3,7 @@ package vault
 import (
 	"errors"
 	"fmt"
+	"os"
 	"github.com/hashicorp/vault/api"
 )
 
