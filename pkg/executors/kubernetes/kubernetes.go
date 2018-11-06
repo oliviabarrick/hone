@@ -163,7 +163,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 				{
 					Name:            j.Name,
 					Image:           j.GetImage(),
-					ImagePullPolicy: "IfNotPresent",
+					ImagePullPolicy: "Always",
 					Command:         cmdLine,
 					WorkingDir:      "/build",
 					Env:             env,

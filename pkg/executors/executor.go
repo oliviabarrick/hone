@@ -25,7 +25,7 @@ func ChooseEngine(config *types.Config, j *job.Job) (func(cache.Cache, *job.Job)
 		}
 
 		k := kubernetes.Kubernetes{}
-		if config.Kubernetes == nil {
+		if config.Kubernetes != nil {
 			k = *config.Kubernetes
 		}
 

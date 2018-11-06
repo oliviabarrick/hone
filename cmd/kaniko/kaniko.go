@@ -19,9 +19,6 @@ type DockerConfig struct {
 
 func main() {
 	if os.Getenv("DOCKER_USER") != "" && os.Getenv("DOCKER_PASS") != "" {
-		os.Unsetenv("DOCKER_USER")
-		os.Unsetenv("DOCKER_PASS")
-
 		config := DockerConfig{
 			Auths: map[string]DockerAuth{},
 		}
@@ -33,7 +30,10 @@ func main() {
 		if registry == "" {
 			registry = "index.docker.io"
 		}
+
 		os.Unsetenv("DOCKER_REGISTRY")
+		os.Unsetenv("DOCKER_USER")
+		os.Unsetenv("DOCKER_PASS")
 
 		config.Auths[fmt.Sprintf("https://%s/v1/", registry)] = DockerAuth{
 			Auth: token,
