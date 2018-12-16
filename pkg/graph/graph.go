@@ -44,7 +44,7 @@ func NewJobGraph(jobs []*config.Job) JobGraph {
 func (j *JobGraph) BuildGraph(jobs []*config.Job) {
 	jobsMap := map[string]*config.Job{}
 	for _, job := range jobs {
-		jobsMap[job.Name] = job
+		jobsMap[job.GetName()] = job
 	}
 
 	for _, job := range jobs {
@@ -79,7 +79,7 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error) func(*
 			d := node.(*Node)
 			_ = <-d.Done
 			if d.Job.Error != nil {
-				failedDeps = append(failedDeps, d.Job.Name)
+				failedDeps = append(failedDeps, d.Job.GetName())
 			}
 		}
 

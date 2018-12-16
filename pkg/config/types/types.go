@@ -24,7 +24,28 @@ type CacheConfig struct {
 func (c Config) Validate() error {
 	for _, job := range c.Jobs {
 		if err := job.Validate(c.GetEngine()); err != nil {
-			return errors.New(fmt.Sprintf("Error validating job %s: %s", job.Name, err))
+			return errors.New(fmt.Sprintf("Error validating job %s: %s", job.GetName(), err))
+		}
+	}
+
+	return nil
+}
+
+func (c Config) RenderTemplates(templates []*job.Job) error {
+	templateMap := map[string]*job.Job{}
+
+	for _, template := range templates {
+		templateMap[template.Name] = template
+	}
+
+	for _, job := range c.Jobs {
+		template := "default"
+		if job.Template != nil {
+			template = *job.Template
+		}
+
+		if templateMap[template] != nil {
+			job.Default(*templateMap[template])
 		}
 	}
 

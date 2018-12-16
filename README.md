@@ -80,6 +80,7 @@ Settings:
 * `output`: A file that this job outputs.
 * `env`: A map of environment variables to add to the job.
 * `engine`: An execution engine to use, defaults to docker or the global engine setting.
+* `template`: the name of a Job template to use (see the section below on templates).
 
 # Execution engine
 
@@ -247,3 +248,43 @@ job "docker-build" {
 ```
 
 You can also set `DOCKER_REGISTRY` to use a different Docker registry.
+
+# Templates
+
+Hone supports job templates to reduce duplication of similar jobs. Templates can have
+any name, however, all jobs will use the `default` template if it exists if a template
+is not supplied.
+
+```
+env = [
+    "DOCKER_USER", "DOCKER_PASS"
+]
+
+template "default" {
+    image = "golang:1.11.2"
+}
+
+template "docker" {
+    image = "justinbarrick/kaniko:latest"
+
+    env = {
+        "DOCKER_USER" = "${environ.DOCKER_USER}",
+        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
+    }
+
+    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${environ.DOCKER_USER}/image:latest"
+}
+
+# Default template
+job "build" {
+    shell = "go build -o binary ./cmd"
+    output = "binary"
+    input = "./cmd/main.go"
+}
+
+# Use the Docker template
+job "docker-build" {
+    template = "docker"
+    input = "binary"
+    deps = ["build"]
+}

@@ -7,8 +7,8 @@ secrets = [
 
 env = [
     "ENGINE=docker",
-    "S3_BUCKET=hone-cache-bucket",
-    "S3_ENDPOINT=nyc3.digitaloceanspaces.com",
+    "S3_BUCKET=codesink-cache",
+    "S3_ENDPOINT=sfo2.digitaloceanspaces.com",
     "S3_ENABLED=true",
     "S3_ACCESS_KEY",
     "S3_SECRET_KEY",
@@ -41,30 +41,34 @@ cache {
     }
 }
 
-job "test" {
+template "default" {
     image = "golang:1.11.2"
-
-    inputs = ["./cmd/", "./pkg/", "go.mod", "go.sum"]
 
     env = {
         "GO111MODULE" = "on"
         "GOCACHE" = "/build/.gocache"
         "GOPATH" = "/build/.go"
     }
+}
 
+template "docker" {
+    image = "justinbarrick/kaniko:latest"
+
+    env = {
+        "DOCKER_USER" = "${environ.DOCKER_USER}",
+        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
+    }
+
+    engine = "kubernetes"
+}
+
+job "test" {
+    inputs = ["./cmd/", "./pkg/", "go.mod", "go.sum"]
     shell = "go test ./cmd/... ./pkg/..."
 }
 
 job "build" {
     deps = ["test"]
-
-    image = "golang:1.11.2"
-
-    env = {
-        "GO111MODULE" = "on"
-        "GOCACHE" = "/build/.gocache"
-        "GOPATH" = "/build/.go"
-    }
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
     output = "hone"
@@ -75,12 +79,8 @@ job "build" {
 job "build-mac" {
     deps = ["test"]
 
-    image = "golang:1.11.2"
-
     env = {
-        "GO111MODULE" = "on"
         "GOCACHE" = "/build/.gocachedarwin"
-        "GOPATH" = "/build/.go"
         "GOOS" = "darwin"
     }
 
@@ -91,14 +91,6 @@ job "build-mac" {
 }
 
 job "build-kaniko-shim" {
-    image = "golang:1.11.2"
-
-    env = {
-        "GO111MODULE" = "on"
-        "GOCACHE" = "/build/.gocache"
-        "GOPATH" = "/build/.go"
-    }
-
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
     output = "docker/kaniko"
 
@@ -106,31 +98,19 @@ job "build-kaniko-shim" {
 }
 
 job "build-kaniko-shim-image" {
-    image = "justinbarrick/kaniko:latest"
+    template = "docker"
 
     deps = ["build-kaniko-shim"]
     inputs = ["docker/Dockerfile.kaniko", "docker/kaniko"]
-
-    env = {
-        "DOCKER_USER" = "${environ.DOCKER_USER}",
-        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
-    }
 
     shell = <<EOF
 kaniko --dockerfile=docker/Dockerfile.kaniko --context=/build/docker/ \
     --destination=${environ.DOCKER_USER}/kaniko:latest
 EOF
-
-    engine = "kubernetes"
 }
 
 job "build-cache-shim" {
-    image = "golang:1.11.2"
-
     env = {
-        "GO111MODULE" = "on"
-        "GOCACHE" = "/build/.gocache"
-        "GOPATH" = "/build/.go"
         "CGO_ENABLED" = "0"
     }
 
@@ -141,22 +121,15 @@ job "build-cache-shim" {
 }
 
 job "build-cache-shim-image" {
-    image = "justinbarrick/kaniko:latest"
+    template = "docker"
 
     deps = ["build-cache-shim"]
     inputs = ["docker/Dockerfile.cache-shim", "docker/cache-shim"]
-
-    env = {
-        "DOCKER_USER" = "${environ.DOCKER_USER}",
-        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
-    }
 
     shell = <<EOF
 kaniko --dockerfile=docker/Dockerfile.cache-shim --context=/build/docker/ \
     --destination=${environ.DOCKER_USER}/cache-shim:latest
 EOF
-
-    engine = "kubernetes"
 }
 
 job "images" {

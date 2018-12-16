@@ -13,11 +13,11 @@ import (
 var logger = log.New(os.Stderr, "", log.Ltime)
 
 func LogWriter(job *config.Job) io.Writer {
-	return logstreamer.NewLogstreamer(logger, fmt.Sprintf(" == %s => ", job.Name), false)
+	return logstreamer.NewLogstreamer(logger, fmt.Sprintf(" == %s => ", job.GetName()), false)
 }
 
 func LogWriterError(job *config.Job) io.Writer {
-	return logstreamer.NewLogstreamer(logger, fmt.Sprintf(" !! %s => ", job.Name), false)
+	return logstreamer.NewLogstreamer(logger, fmt.Sprintf(" !! %s => ", job.GetName()), false)
 }
 
 func Printf(message string, args ...interface{}) {
@@ -25,17 +25,17 @@ func Printf(message string, args ...interface{}) {
 }
 
 func Log(job *config.Job, message string) {
-	logger.Printf(" == %s => %s\n", job.Name, strings.TrimSpace(message))
+	logger.Printf(" == %s => %s\n", job.GetName(), strings.TrimSpace(message))
 }
 
 func LogJob(callback func(*config.Job) error) func(*config.Job) error {
 	return func(job *config.Job) error {
-		logger.Printf("======> Running job \"%s\".\n", job.Name)
+		logger.Printf("======> Running job \"%s\".\n", job.GetName())
 		err := callback(job)
 		if err != nil {
-			logger.Printf("======> Job \"%s\" errored: %s.\n", job.Name, err)
+			logger.Printf("======> Job \"%s\" errored: %s.\n", job.GetName(), err)
 		} else {
-			logger.Printf("======> Job \"%s\" completed!\n", job.Name)
+			logger.Printf("======> Job \"%s\" completed!\n", job.GetName())
 		}
 		return err
 	}

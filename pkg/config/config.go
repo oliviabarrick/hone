@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
+	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/cache/file"
 	"github.com/justinbarrick/hone/pkg/config/types"
 	"github.com/justinbarrick/hone/pkg/secrets/vault"
@@ -22,6 +23,11 @@ type FirstLoad struct {
 type SecondLoad struct {
 	Workspace *string      `hcl:"workspace"`
 	Vault     *vault.Vault `hcl:"vault,block"`
+	Remain    hcl.Body     `hcl:",remain"`
+}
+
+type ThirdLoad struct {
+	Templates []*job.Job   `hcl:"template,block"`
 	Remain    hcl.Body     `hcl:",remain"`
 }
 
@@ -113,7 +119,13 @@ func Unmarshal(fname string) (*types.Config, error) {
 		Variables: variables,
 	}
 
-	diags = gohcl.DecodeBody(sl.Remain, &ctx, config)
+	tl := &ThirdLoad{}
+	diags = gohcl.DecodeBody(sl.Remain, &ctx, tl)
+	if err := checkErrors(parser, diags); err != nil {
+		return nil, err
+	}
+
+	diags = gohcl.DecodeBody(tl.Remain, &ctx, config)
 	if err := checkErrors(parser, diags); err != nil {
 		return nil, err
 	}
@@ -124,6 +136,10 @@ func Unmarshal(fname string) (*types.Config, error) {
 
 	if config.Cache.File == nil {
 		config.Cache.File = &filecache.FileCache{}
+	}
+
+	if err := config.RenderTemplates(tl.Templates); err != nil {
+		return nil, err
 	}
 
 	if err := config.Validate(); err != nil {

@@ -98,7 +98,7 @@ func Run(c cache.Cache, j *job.Job) error {
 		statusCode = status.StatusCode
 	}
 
-	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.Name, statusCode))
+	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.GetName(), statusCode))
 
 	if err := d.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{}); err != nil {
 		return err

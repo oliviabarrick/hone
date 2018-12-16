@@ -93,10 +93,10 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      j.Name,
+			Name:      j.GetName(),
 			Namespace: namespace,
 			Labels: map[string]string{
-				"hone/target": j.Name,
+				"hone/target": j.GetName(),
 			},
 		},
 		StringData: cacheEnv,
@@ -127,10 +127,10 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      j.Name,
+			Name:      j.GetName(),
 			Namespace: namespace,
 			Labels: map[string]string{
-				"hone/target": j.Name,
+				"hone/target": j.GetName(),
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -161,7 +161,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 			},
 			Containers: []corev1.Container{
 				{
-					Name:            j.Name,
+					Name:            j.GetName(),
 					Image:           j.GetImage(),
 					ImagePullPolicy: "Always",
 					Command:         cmdLine,
@@ -184,7 +184,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	defer clientset.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 
 	watcher, err := clientset.CoreV1().Pods(namespace).Watch(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("hone/target=%s", j.Name),
+		LabelSelector: fmt.Sprintf("hone/target=%s", j.GetName()),
 	})
 	if err != nil {
 		return err
@@ -206,7 +206,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	}
 
 	req := clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
-		Container: j.Name,
+		Container: j.GetName(),
 		Follow:    true,
 	})
 

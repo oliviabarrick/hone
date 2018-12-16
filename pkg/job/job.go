@@ -9,7 +9,8 @@ import (
 
 type Job struct {
 	Name    string             `hcl:"name,label"`
-	Image   *string             `hcl:"image"`
+	Template *string `hcl:"template" hash:"-"`
+	Image   *string            `hcl:"image"`
 	Shell   *string            `hcl:"shell"`
 	Exec    *[]string          `hcl:"exec"`
 	Inputs  *[]string          `hcl:"inputs"`
@@ -20,6 +21,56 @@ type Job struct {
 	Deps    *[]string          `hcl:"deps"`
 	Engine  *string            `hcl:"engine" hash:"-"`
 	Error   error              `hash:"-"`
+}
+
+func (j *Job) Default(def Job) {
+	if j.Image == nil {
+		j.Image = def.Image
+	}
+
+	if j.Shell == nil {
+		j.Shell = def.Shell
+	}
+
+	if j.Exec == nil {
+		j.Exec = def.Exec
+	}
+
+	if j.Inputs == nil && j.Input == nil {
+		j.Inputs = def.Inputs
+		j.Input = def.Input
+	}
+
+	if j.Outputs == nil && j.Output == nil {
+		j.Outputs = def.Outputs
+		j.Output = def.Output
+	}
+
+	if j.Engine == nil {
+		j.Engine = def.Engine
+	}
+
+	if j.Deps == nil {
+		j.Deps = def.Deps
+	}
+
+	if def.Env != nil {
+		if j.Env == nil {
+			j.Env = def.Env
+		} else {
+			env := *j.Env
+
+			for key, value := range *def.Env {
+				if env[key] != "" {
+					continue
+				}
+
+				env[key] = value
+			}
+
+			j.Env = &env
+		}
+	}
 }
 
 func (j Job) Validate(engine string) error {
@@ -40,7 +91,11 @@ func (j Job) Validate(engine string) error {
 }
 
 func (j Job) ID() int64 {
-	return utils.Crc(j.Name)
+	return utils.Crc(j.GetName())
+}
+
+func (j Job) GetName() string {
+	return j.Name
 }
 
 func (j Job) GetImage() string {
