@@ -20,6 +20,7 @@ type Job struct {
 	Env     *map[string]string `hcl:"env"`
 	Deps    *[]string          `hcl:"deps"`
 	Engine  *string            `hcl:"engine" hash:"-"`
+	Condition *string          `hcl:"condition"`
 	Error   error              `hash:"-"`
 }
 

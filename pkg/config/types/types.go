@@ -10,6 +10,7 @@ import (
 )
 
 type Config struct {
+	Env        map[string]interface{}
 	Jobs       []*job.Job             `hcl:"job,block"`
 	Cache      *CacheConfig           `hcl:"cache,block"`
 	Kubernetes *kubernetes.Kubernetes `hcl:"kubernetes,block"`

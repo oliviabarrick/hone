@@ -1,7 +1,9 @@
 module github.com/justinbarrick/hone
 
 require (
+	github.com/antlr/antlr4 v0.0.0-20181130174051-b3f00ca72aaa // indirect
 	github.com/bmatcuk/doublestar v1.1.1
+	github.com/caibirdme/yql v0.0.0-20180319101359-315dfc5afc87
 	github.com/cnf/structhash v0.0.0-20180104161610-62a607eb0224
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/distribution v2.7.0-rc.0.0.20181024170156-93e082742a00+incompatible // indirect

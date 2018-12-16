@@ -6,6 +6,7 @@ import (
 	"github.com/justinbarrick/hone/pkg/executors"
 	"github.com/justinbarrick/hone/pkg/graph"
 	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"log"
 	"os"
@@ -35,6 +36,8 @@ func main() {
 
 		return orchestratorCb(config.Cache.S3, j)
 	}
+
+	callback = events.EventCallback(config, callback)
 
 	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {

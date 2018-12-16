@@ -43,7 +43,10 @@ func checkErrors(parser *hclparse.Parser, diagnostics hcl.Diagnostics) error {
 }
 
 func Unmarshal(fname string) (*types.Config, error) {
-	config := &types.Config{}
+	config := &types.Config{
+		Env: map[string]interface{}{},
+	}
+
 	parser := hclparse.NewParser()
 
 	hclFile, diags := parser.ParseHCLFile(fname)
@@ -71,6 +74,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 				val = defaultVal
 			}
 			environ[env[0]] = cty.StringVal(val)
+			config.Env[env[0]] = val
 		}
 	}
 
@@ -80,6 +84,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 	}
 	for key, value := range repo.GitEnv() {
 		environ[key] = cty.StringVal(value)
+		config.Env[key] = value
 	}
 
 	variables := map[string]cty.Value{}

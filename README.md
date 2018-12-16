@@ -135,6 +135,27 @@ There are also some built-in variables:
 * `environ.GIT_COMMIT`: the current commit id.
 * `environ.GIT_COMMIT_SHORT`: an eight character short commit id.
 
+## Conditions
+
+It is possible to only run a job if it match certain conditions. Currently,
+this has no effect on jobs that depend on the job with the condition, but the job
+will only run when the condition is met.
+
+Conditions are specified as a [YQL query](https://github.com/caibirdme/yql) using the
+same `environ` context as other jobs.
+
+For example, to only run a job when the branch is master and tagged, a job could be:
+
+```
+job "release" {
+    image = "alpine"
+
+    condition = "GIT_BRANCH='master' and GIT_TAG!=''"
+
+    shell = "echo Release!"
+}
+```
+
 # Caching
 
 By default it uses a local file cache. To also use S3 as a cache, set:
