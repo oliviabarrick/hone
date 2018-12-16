@@ -36,11 +36,13 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/ryanuber/go-glob v0.0.0-20170128012129-256dc444b735 // indirect
+	github.com/stretchr/testify v1.2.2
 	github.com/zclconf/go-cty v0.0.0-20181017232614-01c5aba823a6
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	gonum.org/v1/gonum v0.0.0-20181029232933-400065bf7646
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/src-d/go-billy.v4 v4.2.1
 	gopkg.in/src-d/go-git.v4 v4.7.1
 	k8s.io/api v0.0.0-20181102122915-de5c567eef5c
 	k8s.io/apimachinery v0.0.0-20181101131016-0aa9751e8aaf

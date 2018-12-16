@@ -126,6 +126,15 @@ env = [
 engine = ${environ.ENGINE}
 ```
 
+## Built-in variables
+
+There are also some built-in variables:
+
+* `environ.GIT_TAG`: the tag present on this commit
+* `environ.GIT_BRANCH`: the branch that is checked out
+* `environ.GIT_COMMIT`: the current commit id.
+* `environ.GIT_COMMIT_SHORT`: an eight character short commit id.
+
 # Caching
 
 By default it uses a local file cache. To also use S3 as a cache, set:

@@ -6,9 +6,11 @@ import (
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
 	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/git"
 	"github.com/justinbarrick/hone/pkg/cache/file"
 	"github.com/justinbarrick/hone/pkg/config/types"
 	"github.com/justinbarrick/hone/pkg/secrets/vault"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/zclconf/go-cty/cty"
 	"os"
 	"strings"
@@ -49,7 +51,6 @@ func Unmarshal(fname string) (*types.Config, error) {
 		return nil, err
 	}
 
-	envVars := map[string]string{}
 	environ := map[string]cty.Value{}
 
 	fl := &FirstLoad{}
@@ -70,8 +71,15 @@ func Unmarshal(fname string) (*types.Config, error) {
 				val = defaultVal
 			}
 			environ[env[0]] = cty.StringVal(val)
-			envVars[env[0]] = val
 		}
+	}
+
+	repo, err := git.NewRepository()
+	if err != nil {
+		logger.Printf("Failed to load git environment: %s\n", err)
+	}
+	for key, value := range repo.GitEnv() {
+		environ[key] = cty.StringVal(value)
 	}
 
 	variables := map[string]cty.Value{}
