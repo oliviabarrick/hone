@@ -47,7 +47,7 @@ require (
 	gonum.org/v1/gonum v0.0.0-20181029232933-400065bf7646
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.2.1
-	gopkg.in/src-d/go-git.v4 v4.7.1
+	gopkg.in/src-d/go-git.v4 v4.8.1
 	k8s.io/api v0.0.0-20181102122915-de5c567eef5c
 	k8s.io/apimachinery v0.0.0-20181101131016-0aa9751e8aaf
 	k8s.io/client-go v9.0.0+incompatible

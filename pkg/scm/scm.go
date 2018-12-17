@@ -11,6 +11,7 @@ import (
 	"github.com/drone/go-scm/scm/transport"
 	"github.com/justinbarrick/hone/pkg/git"
 	"github.com/justinbarrick/hone/pkg/events"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"context"
 	"errors"
 	"net/http"
@@ -196,6 +197,22 @@ func (s SCM) BuildCanceled() error {
 func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 	finalScms := []*SCM{}
 
+	// TODO: Status() doesn't ignore gitignore: https://github.com/src-d/go-git/issues/844
+	/*
+	repo, err := git.NewRepository()
+	if err != nil {
+		return finalScms, err
+	}
+
+	dirty, err := repo.IsDirty()
+	if err != nil {
+		return finalScms, errors.New(fmt.Sprintf("checking if repository is dirty: %s", err))
+	} else if dirty {
+		logger.Printf("Not posting status because directory is dirty.\n")
+		return finalScms, nil
+	}
+	*/
+
 	for _, scm := range scms {
 		run, err := events.YQLMatch(scm.Condition, env)
 		if err != nil {
@@ -211,6 +228,7 @@ func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 			return finalScms, err
 		}
 
+		logger.Printf("Initialized provider: %s\n", scm.GetProvider())
 		finalScms = append(finalScms, scm)
 	}
 

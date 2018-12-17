@@ -202,3 +202,17 @@ func (r Repository) GitEnv() map[string]string {
 		"GIT_BRANCH": branch,
 	}
 }
+
+func (r Repository) IsDirty() (bool, error) {
+	worktree, err := r.Repo.Worktree()
+	if err != nil {
+		return false, errors.New(fmt.Sprintf("opening worktree: %s", err))
+	}
+
+	status, err := worktree.Status()
+	if err != nil {
+		return false, errors.New(fmt.Sprintf("parsing worktree status: %s", err))
+	}
+
+	return status.IsClean(), nil
+}

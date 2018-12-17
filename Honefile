@@ -10,7 +10,7 @@ env = [
     "ENGINE=docker",
     "S3_BUCKET=codesink-cache",
     "S3_ENDPOINT=sfo2.digitaloceanspaces.com",
-    "S3_ENABLED=true",
+    "S3_ENABLED=false",
     "S3_ACCESS_KEY",
     "S3_SECRET_KEY",
     "DOCKER_USER",
@@ -43,9 +43,9 @@ cache {
     }
 }
 
-report {
-    token = "${environ.GITHUB_TOKEN}"
-}
+#report {
+#    token = "${environ.GITHUB_TOKEN}"
+#}
 
 template "default" {
     image = "golang:1.11.2"
