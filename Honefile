@@ -43,9 +43,9 @@ cache {
     }
 }
 
-#report {
-#    token = "${environ.GITHUB_TOKEN}"
-#}
+report {
+    token = "${environ.GITHUB_TOKEN}"
+}
 
 template "default" {
     image = "golang:1.11.2"
