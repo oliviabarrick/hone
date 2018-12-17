@@ -44,7 +44,7 @@ type SCM struct {
 	URL      *string    `hcl:"url"`
 	Token    string     `hcl:"token"`
 	Repo     *string    `hcl:"repo"`
-	Origin   *string    `hcl:"origin"`
+	Remote   *string    `hcl:"remote"`
 	Condition *string   `hcl:"condition"`
 	Git      git.Repository
 	commit   string
@@ -84,11 +84,11 @@ func (s *SCM) GetProvider() (Provider) {
 	if s.Provider != nil {
 		provider = *s.Provider
 	} else {
-		origin := "origin"
-		if s.Origin != nil {
-			origin = *s.Origin
+		remote := "origin"
+		if s.Remote != nil {
+			remote = *s.Remote
 		}
-		repo, _ := s.Git.RepoHostname(origin)
+		repo, _ := s.Git.RepoHostname(remote)
 		provider = urlToProvider[repo]
 	}
 
@@ -104,11 +104,11 @@ func (s *SCM) GetRepo() string {
 	if s.Repo != nil {
 		repo = *s.Repo
 	} else {
-		origin := "origin"
-		if s.Origin != nil {
-			origin = *s.Origin
+		remote := "origin"
+		if s.Remote != nil {
+			remote = *s.Remote
 		}
-		repo, _ = s.Git.RepoPath(origin)
+		repo, _ = s.Git.RepoPath(remote)
 	}
 
 	return repo

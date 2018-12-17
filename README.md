@@ -318,3 +318,33 @@ job "docker-build" {
     input = "binary"
     deps = ["build"]
 }
+
+# Reporting
+
+It is possible to report build status back to your Git provider. Hone has built in support
+for a number of Git providers:
+
+* Github
+* Gitlab
+* Gitea
+* Gogs
+* Bitbucket
+* Stash
+
+Your provider can be configured with a `report` block, note that you can supply as many report blocks
+as required:
+
+```
+report {
+    token = "github token"
+}
+```
+
+The only required parameter is `token`, however, other options are:
+
+* `token`: the token to use when authenticating with the provider, if it is empty, no status will be reported.
+* `provider`: (optional) the provider to use, defaults to inferring from the configured remote or Github.
+* `url`: (optional) the API URL for the provider, required for self-hosted providers.
+* `repo`: (optional) the name of the repository to post status to, by default infers from the URL in the remote.
+* `remote`: (optional) the Git remote to attempt to infer provider configuration from, defaults to `origin`.
+* `condition`: (optional) a condition that must be met in order to report the status. See the conditions section of the job for more information.
