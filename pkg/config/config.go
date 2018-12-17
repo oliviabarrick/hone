@@ -82,6 +82,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 	if err != nil {
 		logger.Printf("Failed to load git environment: %s\n", err)
 	}
+
 	for key, value := range repo.GitEnv() {
 		environ[key] = cty.StringVal(value)
 		config.Env[key] = value

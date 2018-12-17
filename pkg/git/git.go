@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"net/url"
 	"strings"
 	"os"
 	"path/filepath"
@@ -133,6 +134,10 @@ func (r Repository) Branch() (string, error) {
 }
 
 func (r Repository) RepoUrl(remoteName string) (string, error) {
+	if r.Repo == nil {
+		return "", errors.New("Repo not set.")
+	}
+
 	list, err := r.Repo.Remotes()
 	if err != nil {
 		return "", err
@@ -145,6 +150,39 @@ func (r Repository) RepoUrl(remoteName string) (string, error) {
 	}
 
 	return "", errors.New(fmt.Sprintf("Remote \"%s\" not found.", remoteName))
+}
+
+func (r Repository) ParseURL(remote string) (*url.URL, error) {
+	urlStr, err := r.RepoUrl(remote)
+	if err != nil {
+		return nil, err
+	}
+
+	protocolRe := regexp.MustCompile("^[a-z]+://")
+	if ! protocolRe.MatchString(urlStr) {
+		urlStr = strings.Replace(urlStr, ":", "/", 1)
+		urlStr = fmt.Sprintf("ssh://%s", urlStr)
+	}
+
+	return url.Parse(urlStr)
+}
+
+func (r Repository) RepoHostname(remote string) (string, error) {
+	parsed, err := r.ParseURL(remote)
+	if err != nil {
+		return "", err
+	}
+
+	return parsed.Hostname(), nil
+}
+
+func (r Repository) RepoPath(remote string) (string, error) {
+	parsed, err := r.ParseURL(remote)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSuffix(strings.Trim(parsed.Path, "/"), ".git"), nil
 }
 
 func (r Repository) GitEnv() map[string]string {

@@ -8,6 +8,7 @@ import (
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/scm"
 	"log"
 	"os"
 )
@@ -37,7 +38,7 @@ func main() {
 		return orchestratorCb(config.Cache.S3, j)
 	}
 
-	callback = events.EventCallback(config, callback)
+	callback = events.EventCallback(config.Env, callback)
 
 	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {
@@ -52,9 +53,31 @@ func main() {
 	}
 	callback = cache.CacheJob(fileCache, callback)
 
+	scms, err := scm.InitSCMs(config.SCM, config.Env)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, scm := range scms {
+		if err := scm.BuildStarted(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	g := graph.NewJobGraph(config.Jobs)
 	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
 		logger.Printf("Exiting with failure.\n")
+		for _, scm := range scms {
+			if err := scm.BuildErrored(); err != nil {
+				log.Fatal(err)
+			}
+		}
 		os.Exit(len(errs))
+	}
+
+	for _, scm := range scms {
+		if err := scm.BuildCompleted(); err != nil {
+			log.Fatal(err)
+		}
 	}
 }

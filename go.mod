@@ -10,6 +10,7 @@ require (
 	github.com/docker/docker v0.7.3-0.20181102213155-3fccc47a09bc
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
+	github.com/drone/go-scm v1.0.5
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.39.0 // indirect
 	github.com/gogo/protobuf v1.1.1 // indirect
@@ -19,6 +20,7 @@ require (
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
+	github.com/h2non/gock v1.0.9
 	github.com/hashicorp/go-cleanhttp v0.5.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.0.0-20180718195005-e651d75abec6 // indirect
 	github.com/hashicorp/go-rootcerts v0.0.0-20160503143440-6bb64b370b90

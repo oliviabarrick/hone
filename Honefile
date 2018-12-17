@@ -2,7 +2,8 @@ secrets = [
     "S3_ACCESS_KEY",
     "S3_SECRET_KEY",
     "DOCKER_USER",
-    "DOCKER_PASS"
+    "DOCKER_PASS",
+    "GITHUB_TOKEN"
 ]
 
 env = [
@@ -16,7 +17,8 @@ env = [
     "DOCKER_PASS",
     "WORKSPACE=dev",
     "VAULT_ADDR=https://vault.codesink.net/",
-    "VAULT_TOKEN"
+    "VAULT_TOKEN",
+    "GITHUB_TOKEN"
 ]
 
 workspace = "${environ.WORKSPACE}"
@@ -39,6 +41,10 @@ cache {
         bucket = "${environ.S3_BUCKET}"
         disabled = "${environ.S3_ENABLED != "true"}"
     }
+}
+
+report {
+    token = "${environ.GITHUB_TOKEN}"
 }
 
 template "default" {
