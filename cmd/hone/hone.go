@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"fmt"
 )
 
 func isCommitNotFound(err error) bool {
@@ -76,6 +77,10 @@ func main() {
 
 	g := graph.NewJobGraph(config.Jobs)
 	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
+		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
+			logger.Printf("Error: Target %s not found in configuration!\n", target)
+		}
+
 		logger.Printf("Exiting with failure.\n")
 		for _, scm := range scms {
 			if err := scm.BuildErrored(); err != nil && !isCommitNotFound(err) {
