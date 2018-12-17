@@ -318,6 +318,7 @@ job "docker-build" {
     input = "binary"
     deps = ["build"]
 }
+```
 
 # Reporting
 
