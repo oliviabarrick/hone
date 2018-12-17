@@ -228,19 +228,9 @@ func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 			return finalScms, err
 		}
 
-		logger.Printf("Initialized provider: %s\n", scm.GetProvider())
+		logger.Printf("Initialized reporting provider: %s\n", scm.GetProvider())
 		finalScms = append(finalScms, scm)
 	}
 
 	return finalScms, nil
-}
-
-func IterSCMs(scms []*SCM, cb func(*SCM) error) error {
-	for _, scm := range scms {
-		if err := cb(scm); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
