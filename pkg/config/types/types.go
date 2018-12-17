@@ -7,10 +7,12 @@ import (
 	"github.com/justinbarrick/hone/pkg/cache/s3"
 	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
 	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/scm"
 )
 
 type Config struct {
 	Env        map[string]interface{}
+	SCM        []*scm.SCM             `hcl:"report,block"`
 	Jobs       []*job.Job             `hcl:"job,block"`
 	Cache      *CacheConfig           `hcl:"cache,block"`
 	Kubernetes *kubernetes.Kubernetes `hcl:"kubernetes,block"`

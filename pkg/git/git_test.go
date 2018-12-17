@@ -4,6 +4,7 @@ import (
 	"testing"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 	"gopkg.in/src-d/go-billy.v4/memfs"
@@ -112,7 +113,6 @@ func taggedCommit(t *testing.T) *git.Repository {
 
 	return r
 }
-
 
 func TestGitTagRepoNotFound(t *testing.T) {
 	r := Repository{
@@ -284,4 +284,72 @@ func TestGitGitEnvTag(t *testing.T) {
 	assert.Equal(t, gitEnv["GIT_COMMIT"], "729ffe8860eacb4aa5aaff19e9a05ab6d8cc5ede")
 	assert.Equal(t, gitEnv["GIT_COMMIT_SHORT"], "729ffe88")
 	assert.Equal(t, gitEnv["GIT_BRANCH"], "master")
+}
+
+func TestGitRepoUrlNoRepo(t *testing.T) {
+	r := Repository{
+		Repo: nil,
+	}
+
+	repoUrl, err := r.RepoUrl("origin")
+	assert.Equal(t, err.Error(), "Repo not set.")
+	assert.Equal(t, repoUrl, "")
+}
+
+func TestGitRepoUrlRemoteNotFound(t *testing.T) {
+	r := Repository{
+		Repo: emptyRepo(t),
+	}
+
+	repoUrl, err := r.RepoUrl("origin")
+	assert.Equal(t, err.Error(), `Remote "origin" not found.`)
+	assert.Equal(t, repoUrl, "")
+}
+
+func TestGitRepoUrlRemoteFound(t *testing.T) {
+	for _, repoUrl := range []string{
+		"ssh://github.com/justinbarrick/hone",
+		"ssh://github.com:22/justinbarrick/hone",
+		"ssh://git@github.com/justinbarrick/hone",
+		"ssh://git@github.com:22/justinbarrick/hone",
+		"ssh://github.com/justinbarrick/hone.git",
+		"ssh://github.com:22/justinbarrick/hone.git",
+		"ssh://git@github.com/justinbarrick/hone.git",
+		"ssh://git@github.com:22/justinbarrick/hone.git",
+		"https://github.com/justinbarrick/hone.git",
+		"https://github.com:22/justinbarrick/hone.git",
+		"https://git@github.com/justinbarrick/hone.git",
+		"https://git@github.com:22/justinbarrick/hone.git",
+		"https://github.com/justinbarrick/hone",
+		"https://github.com:22/justinbarrick/hone",
+		"https://git@github.com/justinbarrick/hone",
+		"https://git@github.com:22/justinbarrick/hone",
+		"git@github.com:justinbarrick/hone.git",
+		"github.com:justinbarrick/hone.git",
+		"git@github.com:justinbarrick/hone",
+		"github.com:justinbarrick/hone",
+	} {
+		repo := oneCommit(t)
+		repo.CreateRemote(&config.RemoteConfig{
+			Name: "origin",
+			URLs: []string{
+				repoUrl,
+			},
+		})
+		
+		r := Repository{
+			Repo: repo,
+		}
+
+		repoUrlParsed, err := r.RepoUrl("origin")
+		assert.Nil(t, err)
+		assert.Equal(t, repoUrlParsed, repoUrl)
+		hostname, err := r.RepoHostname("origin")
+		assert.Nil(t, err)
+		assert.Equal(t, "github.com", hostname)
+		path, err := r.RepoPath("origin")
+		assert.Nil(t, err)
+		assert.Equal(t, "justinbarrick/hone", path)
+
+	}
 }

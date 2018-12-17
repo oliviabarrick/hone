@@ -3,8 +3,11 @@
 .go
 .gocache
 .gocachedarwin
-./hone
+.dockercache
+hone
 hone_darwin
 *.swp
 docker/kaniko
 docker/cache-shim
+tasks.json
+.vscode
