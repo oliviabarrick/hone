@@ -1,8 +1,8 @@
 package executors
 
 import (
+	"context"
 	"errors"
-	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/config/types"
 	"github.com/justinbarrick/hone/pkg/executors/docker"
 	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
@@ -11,32 +11,71 @@ import (
 	"github.com/justinbarrick/hone/pkg/logger"
 )
 
-func ChooseEngine(config *types.Config, j *job.Job) (func(cache.Cache, *job.Job) error, error) {
-	orchestratorCb := docker.Run
+type Engine interface {
+	Init() error
+	Start(context.Context, *job.Job) error
+	Wait(context.Context, *job.Job) error
+	Stop(context.Context, *job.Job) error
+}
 
+func ChooseEngine(config *types.Config, j *job.Job) (Engine, error) {
 	engine := j.GetEngine()
 	if engine == "" {
 		engine = config.GetEngine()
 	}
+
+	var orchestrator Engine
 
 	if engine == "kubernetes" {
 		if config.Cache.S3 == nil {
 			return nil, errors.New("Kubernetes is not currently supported without an S3 configuration.")
 		}
 
-		k := kubernetes.Kubernetes{}
+		k := &kubernetes.Kubernetes{}
+
 		if config.Kubernetes != nil {
-			k = *config.Kubernetes
+			k = config.Kubernetes
 		}
 
-		orchestratorCb = k.Run
+		if k.Cache == nil {
+			k.Cache = config.Cache.S3
+		}
+
+		orchestrator = k
 		logger.Printf("Using Kubernetes for running jobs.\n")
 	} else if engine == "local" {
-		orchestratorCb = local.Run
+		orchestrator = &local.Local{}
 		logger.Printf("Using local for running jobs.\n")
 	} else {
+		orchestrator = &docker.Docker{}
 		logger.Printf("Using Docker for running jobs.\n")
 	}
 
-	return orchestratorCb, nil
+	err := orchestrator.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return orchestrator, nil
+}
+
+func Run(config *types.Config, j *job.Job) error {
+	ctx := context.TODO()
+
+	engine, err := ChooseEngine(config, j)
+	if err != nil {
+		return err
+	}
+
+	err = engine.Start(ctx, j)
+	if err != nil {
+		return err
+	}
+
+	err = engine.Wait(ctx, j)
+	if err != nil {
+		return err
+	}
+
+	return engine.Stop(ctx, j)
 }

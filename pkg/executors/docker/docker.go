@@ -10,26 +10,36 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"io"
 	"os"
 )
 
-func Run(c cache.Cache, j *job.Job) error {
-	ctx := context.TODO()
+type Docker struct {
+	docker *docker.Client
+	ctr    string
+}
 
-	d, err := docker.NewEnvClient()
-	if err != nil {
-		return err
+func (d *Docker) Init() error {
+	if d.docker == nil {
+		dockerClient, err := docker.NewEnvClient()
+		if err != nil {
+			return err
+		}
+
+		d.docker = dockerClient
 	}
 
-	d.NegotiateAPIVersion(ctx)
-	args := filters.NewArgs()
-	args.Add("reference", j.GetImage())
+	d.docker.NegotiateAPIVersion(context.TODO())
+	return nil
+}
 
-	images, err := d.ImageList(ctx, types.ImageListOptions{
+func (d *Docker) Pull(ctx context.Context, image string) error {
+	args := filters.NewArgs()
+	args.Add("reference", image)
+
+	images, err := d.docker.ImageList(ctx, types.ImageListOptions{
 		Filters: args,
 	})
 	if err != nil {
@@ -37,11 +47,58 @@ func Run(c cache.Cache, j *job.Job) error {
 	}
 
 	if len(images) < 1 {
-		reader, err := d.ImagePull(ctx, j.GetImage(), types.ImagePullOptions{})
+		reader, err := d.docker.ImagePull(ctx, image, types.ImagePullOptions{})
 		if err != nil {
 			return err
 		}
-		io.Copy(os.Stdout, reader)
+		_, err = io.Copy(os.Stdout, reader)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
+	logger.Log(j, fmt.Sprintf("Started container: %s\n", d.ctr[:8]))
+	out, err := d.docker.ContainerLogs(ctx, d.ctr, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		return err
+	}
+	stdcopy.StdCopy(logger.LogWriter(j), logger.LogWriterError(j), out)
+
+	statusCh, errCh := d.docker.ContainerWait(ctx, d.ctr, container.WaitConditionNotRunning)
+	statusCode := int64(0)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case status := <-statusCh:
+		statusCode = status.StatusCode
+	}
+
+	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.GetName(), statusCode))
+	if statusCode != 0 {
+		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
+	}
+
+	return nil
+}
+
+func (d *Docker) Stop(ctx context.Context, j *job.Job) error {
+	return d.docker.ContainerRemove(ctx, d.ctr, types.ContainerRemoveOptions{})
+}
+
+func (d *Docker) Start(ctx context.Context, j *job.Job) error {
+	err := d.Pull(ctx, j.GetImage())
+	if err != nil {
+		return err
 	}
 
 	env := []string{}
@@ -54,7 +111,7 @@ func Run(c cache.Cache, j *job.Job) error {
 		return err
 	}
 
-	ctr, err := d.ContainerCreate(ctx, &container.Config{
+	ctr, err := d.docker.ContainerCreate(ctx, &container.Config{
 		Image:      j.GetImage(),
 		Entrypoint: j.GetShell(),
 		Env:        env,
@@ -72,41 +129,10 @@ func Run(c cache.Cache, j *job.Job) error {
 		return err
 	}
 
-	if err := d.ContainerStart(ctx, ctr.ID, types.ContainerStartOptions{}); err != nil {
+	if err := d.docker.ContainerStart(ctx, ctr.ID, types.ContainerStartOptions{}); err != nil {
 		return err
 	}
 
-	logger.Log(j, fmt.Sprintf("Started container: %s\n", ctr.ID[:8]))
-	out, err := d.ContainerLogs(ctx, ctr.ID, types.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-	})
-	if err != nil {
-		return err
-	}
-	stdcopy.StdCopy(logger.LogWriter(j), logger.LogWriterError(j), out)
-
-	statusCh, errCh := d.ContainerWait(ctx, ctr.ID, container.WaitConditionNotRunning)
-	statusCode := int64(0)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
-		}
-	case status := <-statusCh:
-		statusCode = status.StatusCode
-	}
-
-	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.GetName(), statusCode))
-
-	if err := d.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{}); err != nil {
-		return err
-	}
-
-	if statusCode != 0 {
-		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
-	}
-
+	d.ctr = ctr.ID
 	return nil
 }

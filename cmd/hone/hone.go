@@ -11,18 +11,9 @@ import (
 	"github.com/justinbarrick/hone/pkg/scm"
 	"log"
 	"os"
-	"strings"
 	"fmt"
 )
 
-func isCommitNotFound(err error) bool {
-	if strings.Contains(err.Error(), "No commit found for SHA") {
-		logger.Printf("Notice: did not post status since commit SHA not found upstream.\n")
-		return true
-	}
-
-	return false
-}
 
 func main() {
 	honePath := "Honefile"
@@ -41,12 +32,7 @@ func main() {
 	}
 
 	callback := func(j *job.Job) error {
-		orchestratorCb, err := executors.ChooseEngine(config, j)
-		if err != nil {
-			return err
-		}
-
-		return orchestratorCb(config.Cache.S3, j)
+		return executors.Run(config, j)
 	}
 
 	callback = events.EventCallback(config.Env, callback)
@@ -69,10 +55,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, scm := range scms {
-		if err := scm.BuildStarted(); err != nil && !isCommitNotFound(err) {
-			log.Fatal(err)
-		}
+	if err = scm.BuildStarted(scms); err != nil {
+		log.Fatal(err)
 	}
 
 	g := graph.NewJobGraph(config.Jobs)
@@ -82,17 +66,15 @@ func main() {
 		}
 
 		logger.Printf("Exiting with failure.\n")
-		for _, scm := range scms {
-			if err := scm.BuildErrored(); err != nil && !isCommitNotFound(err) {
-				log.Fatal(err)
-			}
+
+		if err = scm.BuildErrored(scms); err != nil {
+			log.Fatal(err)
 		}
+
 		os.Exit(len(errs))
 	}
 
-	for _, scm := range scms {
-		if err := scm.BuildCompleted(); err != nil && !isCommitNotFound(err) {
-			log.Fatal(err)
-		}
+	if err = scm.BuildCompleted(scms); err != nil {
+		log.Fatal(err)
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 )
 
 type State int
@@ -234,3 +235,43 @@ func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 
 	return finalScms, nil
 }
+
+func IsCommitNotFound(err error) bool {
+	if strings.Contains(err.Error(), "No commit found for SHA") {
+		logger.Printf("Notice: did not post status since commit SHA not found upstream.\n")
+		return true
+	}
+
+	return false
+}
+
+func BuildStarted(scms []*SCM) error {
+	for _, scm := range scms {
+		if err := scm.BuildStarted(); err != nil && !IsCommitNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func BuildErrored(scms []*SCM) error {
+	for _, scm := range scms {
+		if err := scm.BuildErrored(); err != nil && !IsCommitNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func BuildCompleted(scms []*SCM) error {
+	for _, scm := range scms {
+		if err := scm.BuildCompleted(); err != nil && !IsCommitNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+

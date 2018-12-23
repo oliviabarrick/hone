@@ -9,6 +9,7 @@ import (
 	"os"
 )
 
+
 type DockerAuth struct {
 	Auth string `json"auth"`
 }

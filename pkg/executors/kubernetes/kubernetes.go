@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,9 +22,13 @@ import (
 type Kubernetes struct {
 	Namespace  *string `hcl:"namespace"`
 	Kubeconfig *string `hcl:"kubeconfig"`
+	Cache      cache.Cache
+	cacheKey   string
+	clientset  *kubernetes.Clientset
+	pod        string
 }
 
-func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
+func (k *Kubernetes) Init() error {
 	kubeconfig := os.Getenv("KUBECONFIG")
 
 	if k.Kubeconfig != nil {
@@ -43,12 +48,90 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 		return err
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
+	k.clientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
 
-	storageCacheKey, err := storage.UploadInputs(c, j)
+	if k.Namespace == nil {
+		namespace := "default"
+		k.Namespace = &namespace
+	}
+
+	return nil
+}
+
+func (k *Kubernetes) Wait(ctx context.Context, j *job.Job) error {
+	watcher, err := k.clientset.CoreV1().Pods(*k.Namespace).Watch(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("hone/target=%s", j.GetName()),
+	})
+	if err != nil {
+		return err
+	}
+
+	watchCh := watcher.ResultChan()
+	running := false
+
+	var pod *corev1.Pod
+
+	for event := range watchCh {
+		pod = event.Object.(*corev1.Pod)
+
+		if pod.Status.Phase == "Running" {
+			running = true
+		}
+
+		if pod.Status.Phase != "Pending" && pod.Status.Phase != "PodInitializing" {
+			break
+		}
+	}
+
+	req := k.clientset.CoreV1().Pods(*k.Namespace).GetLogs(k.pod, &corev1.PodLogOptions{
+		Container: j.GetName(),
+		Follow:    true,
+	})
+
+	readCloser, err := req.Stream()
+	if err != nil {
+		return err
+	}
+
+	io.Copy(logger.LogWriter(j), readCloser)
+
+	if running {
+		for event := range watchCh {
+			pod = event.Object.(*corev1.Pod)
+
+			if pod.Status.Phase != "Running" {
+				break
+			}
+		}
+	}
+
+	exitStatus := pod.Status.ContainerStatuses[0].State.Terminated.ExitCode
+	if exitStatus != 0 {
+		return errors.New(fmt.Sprintf("Pod exited with error: %d", exitStatus))
+	}
+
+	logger.Log(j, fmt.Sprintf("Pod exit status %d, phase %s", exitStatus, pod.Status.Phase))
+
+	if _, err = cache.LoadCache(k.Cache, k.cacheKey, j); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (k *Kubernetes) Stop(ctx context.Context, j *job.Job) error {
+	k.clientset.CoreV1().Secrets(*k.Namespace).Delete(j.GetName(), &metav1.DeleteOptions{})
+	k.clientset.CoreV1().Pods(*k.Namespace).Delete(k.pod, &metav1.DeleteOptions{})
+	return nil
+}
+
+func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
+	var err error
+
+	k.cacheKey, err = storage.UploadInputs(k.Cache, j)
 	if err != nil {
 		return err
 	}
@@ -61,7 +144,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	env := []corev1.EnvVar{
 		{
 			Name:  "CACHE_KEY",
-			Value: storageCacheKey,
+			Value: k.cacheKey,
 		},
 		{
 			Name:  "OUTPUTS",
@@ -80,21 +163,16 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 		})
 	}
 
-	cacheEnv := c.Env()
+	cacheEnv := k.Cache.Env()
 
-	namespace := "default"
-	if k.Namespace != nil {
-		namespace = *k.Namespace
-	}
-
-	secret, err := clientset.CoreV1().Secrets(namespace).Create(&corev1.Secret{
+	secret, err := k.clientset.CoreV1().Secrets(*k.Namespace).Create(&corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      j.GetName(),
-			Namespace: namespace,
+			Namespace: *k.Namespace,
 			Labels: map[string]string{
 				"hone/target": j.GetName(),
 			},
@@ -104,7 +182,6 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	if err != nil {
 		return err
 	}
-	defer clientset.CoreV1().Secrets(namespace).Delete(secret.Name, &metav1.DeleteOptions{})
 
 	for key, _ := range cacheEnv {
 		env = append(env, corev1.EnvVar{
@@ -121,14 +198,14 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	cmdLine := []string{"/build/cache-shim"}
 	cmdLine = append(cmdLine, j.GetShell()...)
 
-	pod, err := clientset.CoreV1().Pods(namespace).Create(&corev1.Pod{
+	pod, err := k.clientset.CoreV1().Pods(*k.Namespace).Create(&corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      j.GetName(),
-			Namespace: namespace,
+			Namespace: *k.Namespace,
 			Labels: map[string]string{
 				"hone/target": j.GetName(),
 			},
@@ -181,61 +258,7 @@ func (k *Kubernetes) Run(c cache.Cache, j *job.Job) error {
 	if err != nil {
 		return err
 	}
-	defer clientset.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 
-	watcher, err := clientset.CoreV1().Pods(namespace).Watch(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("hone/target=%s", j.GetName()),
-	})
-	if err != nil {
-		return err
-	}
-
-	watchCh := watcher.ResultChan()
-	running := false
-
-	for event := range watchCh {
-		pod = event.Object.(*corev1.Pod)
-
-		if pod.Status.Phase == "Running" {
-			running = true
-		}
-
-		if pod.Status.Phase != "Pending" && pod.Status.Phase != "PodInitializing" {
-			break
-		}
-	}
-
-	req := clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
-		Container: j.GetName(),
-		Follow:    true,
-	})
-
-	readCloser, err := req.Stream()
-	if err != nil {
-		return err
-	}
-
-	io.Copy(logger.LogWriter(j), readCloser)
-
-	if running {
-		for event := range watchCh {
-			pod = event.Object.(*corev1.Pod)
-
-			if pod.Status.Phase != "Running" {
-				break
-			}
-		}
-	}
-
-	exitStatus := pod.Status.ContainerStatuses[0].State.Terminated.ExitCode
-	if exitStatus != 0 {
-		return errors.New(fmt.Sprintf("Pod exited with error: %d", exitStatus))
-	}
-
-	logger.Log(j, fmt.Sprintf("Pod exit status %d, phase %s", exitStatus, pod.Status.Phase))
-	if _, err = cache.LoadCache(c, storageCacheKey, j); err != nil {
-		return err
-	}
-
+	k.pod = pod.Name
 	return nil
 }

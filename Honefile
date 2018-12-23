@@ -152,6 +152,6 @@ job "binaries" {
 
 job "all" {
     deps = ["images", "binaries"]
-    image = "alpine"
     shell = "echo all"
+    engine = "local"
 }

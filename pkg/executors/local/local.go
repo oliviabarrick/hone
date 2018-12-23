@@ -1,7 +1,7 @@
 package local
 
 import (
-	"github.com/justinbarrick/hone/pkg/cache"
+	"context"
 	"github.com/justinbarrick/hone/pkg/job"
 	"io"
 	"io/ioutil"
@@ -10,10 +10,6 @@ import (
 	"strings"
 	"fmt"
 )
-
-func Run(c cache.Cache, j *job.Job) error {
-	return Exec(j.GetShell(), j.GetEnv())
-}
 
 func ParseEnv(env []string) map[string]string {
 	envMap := map[string]string{}
@@ -26,7 +22,29 @@ func ParseEnv(env []string) map[string]string {
 	return envMap
 }
 
-func Exec(command []string, env map[string]string) error {
+type Local struct {
+	stdout io.Reader
+	stderr io.Reader
+	cmd    *exec.Cmd
+}
+
+func (l *Local) Init() error {
+	return nil
+}
+
+func (l *Local) Start(ctx context.Context, j *job.Job) error {
+	return l.Exec(j.GetShell(), j.GetEnv())
+}
+
+func (l *Local) Wait(ctx context.Context, j *job.Job) error {
+	return l.WaitCmd()
+}
+
+func (l *Local) Stop(ctx context.Context, j *job.Job) error {
+	return nil
+}
+
+func (l *Local) Exec(command []string, env map[string]string) error {
 	cmd := exec.Command(command[0], command[1:]...)
 
 	envList := []string{}
@@ -45,18 +63,41 @@ func Exec(command []string, env map[string]string) error {
 		return err
 	}
 
-	stdoutT := io.TeeReader(stdout, os.Stdout)
-	stderrT := io.TeeReader(stderr, os.Stderr)
+	l.stdout = io.TeeReader(stdout, os.Stdout)
+	l.stderr = io.TeeReader(stderr, os.Stderr)
 
 	if err = cmd.Start(); err != nil {
 		return err
 	}
 
-	if _, err := io.Copy(ioutil.Discard, io.MultiReader(stdoutT, stderrT)); err != nil {
+	l.cmd = cmd
+	return nil
+}
+
+func (l *Local) WaitCmd() error {
+	if _, err := io.Copy(ioutil.Discard, io.MultiReader(l.stdout, l.stderr)); err != nil {
 		return err
 	}
 
-	if err = cmd.Wait(); err != nil {
+	if err := l.cmd.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Exec(command []string, env map[string]string) error {
+	l := Local{}
+
+	if err := l.Init(); err != nil {
+		return err
+	}
+
+	if err := l.Exec(command, env); err != nil {
+		return err
+	}
+
+	if err := l.WaitCmd(); err != nil {
 		return err
 	}
 
