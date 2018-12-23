@@ -14,6 +14,7 @@ type Config struct {
 	Env        map[string]interface{}
 	SCM        []*scm.SCM             `hcl:"report,block"`
 	Jobs       []*job.Job             `hcl:"job,block"`
+	Services   []*job.Job             `hcl:"service,block"`
 	Cache      *CacheConfig           `hcl:"cache,block"`
 	Kubernetes *kubernetes.Kubernetes `hcl:"kubernetes,block"`
 	Engine     *string                `hcl:"engine"`
@@ -28,6 +29,13 @@ func (c Config) Validate() error {
 	for _, job := range c.Jobs {
 		if err := job.Validate(c.GetEngine()); err != nil {
 			return errors.New(fmt.Sprintf("Error validating job %s: %s", job.GetName(), err))
+		}
+	}
+
+	for _, service := range c.Services {
+		service.Service = true
+		if err := service.Validate(c.GetEngine()); err != nil {
+			return errors.New(fmt.Sprintf("Error validating service %s: %s", service.GetName(), err))
 		}
 	}
 
@@ -60,4 +68,18 @@ func (c Config) GetEngine() string {
 		return *c.Engine
 	}
 	return ""
+}
+
+func (c Config) GetJobs() []*job.Job {
+	jobs := []*job.Job{}
+
+	if c.Services != nil {
+		jobs = append(jobs, c.Services...)
+	}
+
+	if c.Jobs != nil {
+		jobs = append(jobs, c.Jobs...)
+	}
+
+	return jobs
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"github.com/hashicorp/vault/api"
+	"github.com/justinbarrick/hone/pkg/logger"
 )
 
 type Vault struct {
@@ -14,6 +15,8 @@ type Vault struct {
 }
 
 func (v *Vault) Init() error {
+	logger.Printf("Initializing vault.\n")
+
 	client, err := api.NewClient(&api.Config{
 		Address: v.Address,
 	})

@@ -21,7 +21,10 @@ type Job struct {
 	Deps    *[]string          `hcl:"deps"`
 	Engine  *string            `hcl:"engine" hash:"-"`
 	Condition *string          `hcl:"condition"`
+	Service bool               `hash:"-"`
 	Error   error              `hash:"-"`
+	Detach  chan bool          `hash:"-"`
+	Stop    chan bool          `hash:"-"`
 }
 
 func (j *Job) Default(def Job) {

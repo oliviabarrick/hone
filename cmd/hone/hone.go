@@ -59,7 +59,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	g := graph.NewJobGraph(config.Jobs)
+	g, err := graph.NewJobGraph(config.GetJobs())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
 		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
 			logger.Printf("Error: Target %s not found in configuration!\n", target)

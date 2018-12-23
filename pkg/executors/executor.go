@@ -72,10 +72,40 @@ func Run(config *types.Config, j *job.Job) error {
 		return err
 	}
 
-	err = engine.Wait(ctx, j)
-	if err != nil {
+	finished := make(chan error)
+
+	wait := func() error {
+		defer close(finished)
+
+		err = engine.Wait(ctx, j)
+		if err != nil {
+			finished <- err
+			return err
+		}
+
+		err = engine.Stop(ctx, j)
+		if err != nil {
+			finished <- err
+		}
+
 		return err
 	}
 
-	return engine.Stop(ctx, j)
+	if j.Service {
+		j.Detach <- true
+
+		go wait()
+
+		select {
+		case err := <-finished:
+			return err
+		case <-j.Stop:
+			logger.Printf("Got stop!\n")
+			return engine.Stop(ctx, j)
+		}
+	} else {
+		return wait()
+	}
+
+	return nil
 }
