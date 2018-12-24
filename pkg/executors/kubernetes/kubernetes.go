@@ -12,6 +12,7 @@ import (
 	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
@@ -24,8 +25,9 @@ type Kubernetes struct {
 	Kubeconfig *string `hcl:"kubeconfig"`
 	Cache      cache.Cache
 	cacheKey   string
-	clientset  *kubernetes.Clientset
 	pod        string
+	watchCh    <-chan watch.Event
+	clientset  *kubernetes.Clientset
 }
 
 func (k *Kubernetes) Init() error {
@@ -61,33 +63,43 @@ func (k *Kubernetes) Init() error {
 	return nil
 }
 
-func (k *Kubernetes) Wait(ctx context.Context, j *job.Job) error {
+func (k *Kubernetes) watch(j *job.Job) (<-chan watch.Event, error) {
+	if k.watchCh != nil {
+		return k.watchCh, nil
+	}
+
 	watcher, err := k.clientset.CoreV1().Pods(*k.Namespace).Watch(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("hone/target=%s", j.GetName()),
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	watchCh := watcher.ResultChan()
-	running := false
 
 	var pod *corev1.Pod
 
 	for event := range watchCh {
 		pod = event.Object.(*corev1.Pod)
 
-		if pod.Status.Phase == "Running" {
-			running = true
-		}
-
 		if pod.Status.Phase != "Pending" && pod.Status.Phase != "PodInitializing" {
 			break
 		}
 	}
 
+	k.watchCh = watchCh
+
+	if pod.Status.Phase != "Running" && pod.Status.Phase != "Succeeded" {
+		k.Logs(j, j.GetName())
+		return k.watchCh, errors.New(fmt.Sprintf("Invalid pod status: %s\n", pod.Status.Phase))
+	}
+
+	return k.watchCh, nil
+}
+
+func (k *Kubernetes) Logs(j *job.Job, container string) error {
 	req := k.clientset.CoreV1().Pods(*k.Namespace).GetLogs(k.pod, &corev1.PodLogOptions{
-		Container: j.GetName(),
+		Container: container,
 		Follow:    true,
 	})
 
@@ -96,15 +108,30 @@ func (k *Kubernetes) Wait(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
-	io.Copy(logger.LogWriter(j), readCloser)
+	if _, err := io.Copy(logger.LogWriter(j), readCloser); err != nil {
+		return err
+	}
 
-	if running {
-		for event := range watchCh {
-			pod = event.Object.(*corev1.Pod)
+	return nil
+}
 
-			if pod.Status.Phase != "Running" {
-				break
-			}
+func (k *Kubernetes) Wait(ctx context.Context, j *job.Job) error {
+	if err := k.Logs(j, j.GetName()); err != nil {
+		return err
+	}
+
+	watchCh, err := k.watch(j)
+	if err != nil {
+		return err
+	}
+
+	var pod *corev1.Pod
+
+	for event := range watchCh {
+		pod = event.Object.(*corev1.Pod)
+
+		if pod.Status.Phase != "Running" {
+			break
 		}
 	}
 
@@ -124,6 +151,7 @@ func (k *Kubernetes) Wait(ctx context.Context, j *job.Job) error {
 
 func (k *Kubernetes) Stop(ctx context.Context, j *job.Job) error {
 	k.clientset.CoreV1().Secrets(*k.Namespace).Delete(j.GetName(), &metav1.DeleteOptions{})
+	k.clientset.CoreV1().Services(*k.Namespace).Delete(j.GetName(), &metav1.DeleteOptions{})
 	k.clientset.CoreV1().Pods(*k.Namespace).Delete(k.pod, &metav1.DeleteOptions{})
 	return nil
 }
@@ -136,7 +164,7 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
-	outputs, err := json.Marshal(j.Outputs)
+	outputs, err := json.Marshal(j.GetOutputs())
 	if err != nil {
 		return err
 	}
@@ -183,6 +211,29 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
+	_, err = k.clientset.CoreV1().Services(*k.Namespace).Create(&corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      j.GetName(),
+			Namespace: *k.Namespace,
+			Labels: map[string]string{
+				"hone/target": j.GetName(),
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				"hone/target": j.GetName(),
+			},
+			ClusterIP: "None",
+		},
+	})
+	if err != nil {
+		return err
+	}
+
 	for key, _ := range cacheEnv {
 		env = append(env, corev1.EnvVar{
 			Name: key,
@@ -197,6 +248,8 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 
 	cmdLine := []string{"/build/cache-shim"}
 	cmdLine = append(cmdLine, j.GetShell()...)
+
+	privileged := j.IsPrivileged()
 
 	pod, err := k.clientset.CoreV1().Pods(*k.Namespace).Create(&corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -226,8 +279,12 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 					Name:            "cache-shim",
 					Image:           "justinbarrick/cache-shim",
 					ImagePullPolicy: "Always",
-					Command:         []string{"/bin/sh", "-c", "cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.hone-ca-certificates.crt"},
+					Command:         []string{
+						"/bin/sh", "-c",
+						"cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.hone-ca-certificates.crt",
+					},
 					WorkingDir:      "/build",
+					Env:             env,
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "share",
@@ -244,6 +301,9 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 					Command:         cmdLine,
 					WorkingDir:      "/build",
 					Env:             env,
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "share",
@@ -260,5 +320,10 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 	}
 
 	k.pod = pod.Name
+
+	if _, err := k.watch(j); err != nil {
+		return err
+	}
+
 	return nil
 }

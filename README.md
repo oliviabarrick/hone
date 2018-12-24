@@ -81,6 +81,7 @@ Settings:
 * `env`: A map of environment variables to add to the job.
 * `engine`: An execution engine to use, defaults to docker or the global engine setting.
 * `template`: the name of a Job template to use (see the section below on templates).
+* `privileged`: if true, the container will be started in privileged mode.
 
 # Execution engine
 
@@ -319,6 +320,28 @@ job "docker-build" {
     deps = ["build"]
 }
 ```
+
+# Services
+
+It is possible to create long running services that do not block jobs that depend on them.
+
+These are created as services and take all of the same arguments as a job:
+
+```
+service "nginx" {
+    image = "nginx:latest"
+    exec = ["nginx", "-g", "daemon off;"]
+}
+
+job "curl" {
+    deps = ["nginx"]
+    image = "alpine"
+    shell = "curl http://nginx/"
+}
+```
+
+Nginx would be started, curl would run, and then nginx would be torn down at the end
+of the build.
 
 # Reporting
 

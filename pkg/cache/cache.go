@@ -143,6 +143,10 @@ func (c CacheEntry) SyncAttrs() error {
 
 func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error {
 	return func(job *config.Job) error {
+		if job.Service {
+			return callback(job)
+		}
+
 		cacheKey, err := HashJob(job)
 		if err != nil {
 			return err

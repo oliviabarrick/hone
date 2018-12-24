@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
@@ -14,24 +15,50 @@ import (
 	"github.com/justinbarrick/hone/pkg/logger"
 	"io"
 	"os"
+	"time"
 )
 
-type Docker struct {
+type DockerConfig struct {
 	docker *docker.Client
+	network string
+}
+
+func (dc *DockerConfig) Init() error {
+	dockerClient, err := docker.NewEnvClient()
+	if err != nil {
+		return err
+	}
+
+	dc.docker = dockerClient
+	dc.docker.NegotiateAPIVersion(context.TODO())
+
+	return dc.CreateNetwork()
+}
+
+func (dc *DockerConfig) Cleanup() error {
+	return dc.DeleteNetwork()
+}
+
+func (dc *DockerConfig) CreateNetwork() error {
+	network, err := dc.docker.NetworkCreate(context.TODO(), "hone", types.NetworkCreate{})
+	if err != nil {
+		return err
+	}
+
+	dc.network = network.ID
+	return nil
+}
+
+func (dc *DockerConfig) DeleteNetwork() error {
+	return dc.docker.NetworkRemove(context.TODO(), dc.network)
+}
+
+type Docker struct {
+	DockerConfig *DockerConfig
 	ctr    string
 }
 
 func (d *Docker) Init() error {
-	if d.docker == nil {
-		dockerClient, err := docker.NewEnvClient()
-		if err != nil {
-			return err
-		}
-
-		d.docker = dockerClient
-	}
-
-	d.docker.NegotiateAPIVersion(context.TODO())
 	return nil
 }
 
@@ -39,7 +66,7 @@ func (d *Docker) Pull(ctx context.Context, image string) error {
 	args := filters.NewArgs()
 	args.Add("reference", image)
 
-	images, err := d.docker.ImageList(ctx, types.ImageListOptions{
+	images, err := d.DockerConfig.docker.ImageList(ctx, types.ImageListOptions{
 		Filters: args,
 	})
 	if err != nil {
@@ -47,7 +74,7 @@ func (d *Docker) Pull(ctx context.Context, image string) error {
 	}
 
 	if len(images) < 1 {
-		reader, err := d.docker.ImagePull(ctx, image, types.ImagePullOptions{})
+		reader, err := d.DockerConfig.docker.ImagePull(ctx, image, types.ImagePullOptions{})
 		if err != nil {
 			return err
 		}
@@ -62,7 +89,7 @@ func (d *Docker) Pull(ctx context.Context, image string) error {
 
 func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
 	logger.Log(j, fmt.Sprintf("Started container: %s\n", d.ctr[:8]))
-	out, err := d.docker.ContainerLogs(ctx, d.ctr, types.ContainerLogsOptions{
+	out, err := d.DockerConfig.docker.ContainerLogs(ctx, d.ctr, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -72,7 +99,7 @@ func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
 	}
 	stdcopy.StdCopy(logger.LogWriter(j), logger.LogWriterError(j), out)
 
-	statusCh, errCh := d.docker.ContainerWait(ctx, d.ctr, container.WaitConditionNotRunning)
+	statusCh, errCh := d.DockerConfig.docker.ContainerWait(ctx, d.ctr, container.WaitConditionNotRunning)
 	statusCode := int64(0)
 	select {
 	case err := <-errCh:
@@ -84,7 +111,9 @@ func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
 	}
 
 	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.GetName(), statusCode))
-	if statusCode != 0 {
+	if statusCode != 128 && statusCode != 0 {
+		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
+	} else if ! j.Service && statusCode == 128 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
 	}
 
@@ -92,7 +121,9 @@ func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
 }
 
 func (d *Docker) Stop(ctx context.Context, j *job.Job) error {
-	return d.docker.ContainerRemove(ctx, d.ctr, types.ContainerRemoveOptions{})
+	timeout := 5 * time.Second
+	d.DockerConfig.docker.ContainerStop(ctx, d.ctr, &timeout)
+	return d.DockerConfig.docker.ContainerRemove(ctx, d.ctr, types.ContainerRemoveOptions{})
 }
 
 func (d *Docker) Start(ctx context.Context, j *job.Job) error {
@@ -111,7 +142,8 @@ func (d *Docker) Start(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
-	ctr, err := d.docker.ContainerCreate(ctx, &container.Config{
+	ctr, err := d.DockerConfig.docker.ContainerCreate(ctx, &container.Config{
+		Hostname:   j.GetName(),
 		Image:      j.GetImage(),
 		Entrypoint: j.GetShell(),
 		Env:        env,
@@ -124,12 +156,20 @@ func (d *Docker) Start(ctx context.Context, j *job.Job) error {
 				Target: "/build",
 			},
 		},
-	}, nil, "")
+		Privileged: j.IsPrivileged(),
+	}, &network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
+			"hone": &network.EndpointSettings{
+				Aliases: []string{j.GetName()},
+				NetworkID: d.DockerConfig.network,
+			},
+		},
+	}, "")
 	if err != nil {
 		return err
 	}
 
-	if err := d.docker.ContainerStart(ctx, ctr.ID, types.ContainerStartOptions{}); err != nil {
+	if err := d.DockerConfig.docker.ContainerStart(ctx, ctr.ID, types.ContainerStartOptions{}); err != nil {
 		return err
 	}
 

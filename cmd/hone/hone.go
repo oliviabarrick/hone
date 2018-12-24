@@ -1,14 +1,18 @@
 package main
 
+
 import (
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/config"
 	"github.com/justinbarrick/hone/pkg/executors"
+	"github.com/justinbarrick/hone/pkg/executors/docker"
 	"github.com/justinbarrick/hone/pkg/graph"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/scm"
+	_ "net/http/pprof"
+	"net/http"
 	"log"
 	"os"
 	"fmt"
@@ -30,6 +34,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	config.DockerConfig = &docker.DockerConfig{}
+	if err := config.DockerConfig.Init(); err != nil {
+		log.Fatal(err)
+	}
+
+	defer config.DockerConfig.Cleanup()
 
 	callback := func(j *job.Job) error {
 		return executors.Run(config, j)
@@ -59,7 +70,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	g := graph.NewJobGraph(config.Jobs)
+	go http.ListenAndServe("localhost:6060", nil)
+
+	g, err := graph.NewJobGraph(config.GetJobs())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
 		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
 			logger.Printf("Error: Target %s not found in configuration!\n", target)

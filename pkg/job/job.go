@@ -1,3 +1,4 @@
+
 package job
 
 import (
@@ -21,7 +22,11 @@ type Job struct {
 	Deps    *[]string          `hcl:"deps"`
 	Engine  *string            `hcl:"engine" hash:"-"`
 	Condition *string          `hcl:"condition"`
+	Privileged *bool            `hcl:"privileged"`
+	Service bool               `hash:"-"`
 	Error   error              `hash:"-"`
+	Detach  chan bool          `hash:"-"`
+	Stop    chan bool          `hash:"-"`
 }
 
 func (j *Job) Default(def Job) {
@@ -88,6 +93,10 @@ func (j Job) Validate(engine string) error {
 		return errors.New("Shell and exec are mutually exclusive.")
 	}
 
+	if j.Shell == nil && j.Exec == nil {
+		return errors.New("One of shell or exec must be specified.")
+	}
+
 	return nil
 }
 
@@ -140,10 +149,12 @@ func (j Job) GetInputs() []string {
 func (j Job) GetShell() []string {
 	if j.Exec != nil {
 		return *j.Exec
-	} else {
+	} else if j.Shell != nil {
 		return []string{
 			"/bin/sh", "-cex", *j.Shell,
 		}
+	} else {
+		return nil
 	}
 }
 
@@ -160,4 +171,12 @@ func (j Job) GetEnv() map[string]string {
 		return map[string]string{}
 	}
 	return *j.Env
+}
+
+func (j Job) IsPrivileged() bool {
+	if j.Privileged == nil {
+		return false
+	}
+
+	return *j.Privileged
 }
