@@ -81,6 +81,7 @@ Settings:
 * `env`: A map of environment variables to add to the job.
 * `engine`: An execution engine to use, defaults to docker or the global engine setting.
 * `template`: the name of a Job template to use (see the section below on templates).
+* `privileged`: if true, the container will be started in privileged mode.
 
 # Execution engine
 

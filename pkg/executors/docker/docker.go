@@ -156,6 +156,7 @@ func (d *Docker) Start(ctx context.Context, j *job.Job) error {
 				Target: "/build",
 			},
 		},
+		Privileged: j.IsPrivileged(),
 	}, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			"hone": &network.EndpointSettings{

@@ -249,6 +249,8 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 	cmdLine := []string{"/build/cache-shim"}
 	cmdLine = append(cmdLine, j.GetShell()...)
 
+	privileged := j.IsPrivileged()
+
 	pod, err := k.clientset.CoreV1().Pods(*k.Namespace).Create(&corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -299,6 +301,9 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 					Command:         cmdLine,
 					WorkingDir:      "/build",
 					Env:             env,
+					SecurityContext: &corev1.SecurityContext{
+						Privileged: &privileged,
+					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "share",

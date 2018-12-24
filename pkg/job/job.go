@@ -22,6 +22,7 @@ type Job struct {
 	Deps    *[]string          `hcl:"deps"`
 	Engine  *string            `hcl:"engine" hash:"-"`
 	Condition *string          `hcl:"condition"`
+	Privileged *bool            `hcl:"privileged"`
 	Service bool               `hash:"-"`
 	Error   error              `hash:"-"`
 	Detach  chan bool          `hash:"-"`
@@ -170,4 +171,12 @@ func (j Job) GetEnv() map[string]string {
 		return map[string]string{}
 	}
 	return *j.Env
+}
+
+func (j Job) IsPrivileged() bool {
+	if j.Privileged == nil {
+		return false
+	}
+
+	return *j.Privileged
 }
