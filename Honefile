@@ -94,7 +94,6 @@ job "build-mac" {
     output = "hone_darwin"
 
     shell = "go build -v -o ./hone_darwin ./cmd/hone"
-    engine = "kubernetes"
 }
 
 job "build-kaniko-shim" {
