@@ -22,7 +22,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cacheManifest, err := s3.LoadCacheManifest("srcs_manifests", os.Getenv("CACHE_KEY"))
+	cacheKey := os.Getenv("CACHE_KEY")
+
+	cacheManifest, err := s3.LoadCacheManifest("srcs_manifests", cacheKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +58,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if _, err = cache.DumpOutputs(os.Getenv("CACHE_KEY"), &s3, outputs); err != nil {
+	if _, err = cache.DumpOutputs(cacheKey, &s3, outputs); err != nil {
 		log.Fatal(err)
 	}
 	logger.Printf("Dumped outputs to cache (%s).\n", s3.Name())

@@ -6,7 +6,7 @@ require (
 	github.com/caibirdme/yql v0.0.0-20180319101359-315dfc5afc87
 	github.com/cnf/structhash v0.0.0-20180104161610-62a607eb0224
 	github.com/davecgh/go-spew v1.1.1
-	github.com/docker/distribution v2.7.0-rc.0.0.20181024170156-93e082742a00+incompatible // indirect
+	github.com/docker/distribution v2.7.0-rc.0.0.20181024170156-93e082742a00+incompatible
 	github.com/docker/docker v0.7.3-0.20181102213155-3fccc47a09bc
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect

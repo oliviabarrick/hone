@@ -1,3 +1,4 @@
+
 package job
 
 import (
@@ -91,6 +92,10 @@ func (j Job) Validate(engine string) error {
 		return errors.New("Shell and exec are mutually exclusive.")
 	}
 
+	if j.Shell == nil && j.Exec == nil {
+		return errors.New("One of shell or exec must be specified.")
+	}
+
 	return nil
 }
 
@@ -143,10 +148,12 @@ func (j Job) GetInputs() []string {
 func (j Job) GetShell() []string {
 	if j.Exec != nil {
 		return *j.Exec
-	} else {
+	} else if j.Shell != nil {
 		return []string{
 			"/bin/sh", "-cex", *j.Shell,
 		}
+	} else {
+		return nil
 	}
 }
 

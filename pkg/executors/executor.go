@@ -31,23 +31,26 @@ func ChooseEngine(config *types.Config, j *job.Job) (Engine, error) {
 			return nil, errors.New("Kubernetes is not currently supported without an S3 configuration.")
 		}
 
-		k := &kubernetes.Kubernetes{}
+		k := kubernetes.Kubernetes{}
 
 		if config.Kubernetes != nil {
-			k = config.Kubernetes
+			k = *config.Kubernetes
 		}
 
 		if k.Cache == nil {
 			k.Cache = config.Cache.S3
 		}
 
-		orchestrator = k
+		orchestrator = &k
 		logger.Printf("Using Kubernetes for running jobs.\n")
 	} else if engine == "local" {
 		orchestrator = &local.Local{}
 		logger.Printf("Using local for running jobs.\n")
 	} else {
-		orchestrator = &docker.Docker{}
+		orchestrator = &docker.Docker{
+			DockerConfig: config.DockerConfig,
+		}
+
 		logger.Printf("Using Docker for running jobs.\n")
 	}
 
@@ -61,6 +64,7 @@ func ChooseEngine(config *types.Config, j *job.Job) (Engine, error) {
 
 func Run(config *types.Config, j *job.Job) error {
 	ctx := context.TODO()
+	finished := make(chan error)
 
 	engine, err := ChooseEngine(config, j)
 	if err != nil {
@@ -68,43 +72,23 @@ func Run(config *types.Config, j *job.Job) error {
 	}
 
 	err = engine.Start(ctx, j)
+	defer engine.Stop(ctx, j)
 	if err != nil {
-		return err
-	}
-
-	finished := make(chan error)
-
-	wait := func() error {
-		defer close(finished)
-
-		err = engine.Wait(ctx, j)
-		if err != nil {
-			finished <- err
-			return err
-		}
-
-		err = engine.Stop(ctx, j)
-		if err != nil {
-			finished <- err
-		}
-
 		return err
 	}
 
 	if j.Service {
 		j.Detach <- true
+	}
 
-		go wait()
+	go func() {
+		finished <- engine.Wait(ctx, j)
+	}()
 
-		select {
-		case err := <-finished:
-			return err
-		case <-j.Stop:
-			logger.Printf("Got stop!\n")
-			return engine.Stop(ctx, j)
-		}
-	} else {
-		return wait()
+	select {
+	case err := <-finished:
+		return err
+	case <-j.Stop:
 	}
 
 	return nil

@@ -11,7 +11,6 @@ import (
 
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
-//	"github.com/davecgh/go-spew/spew"
 )
 
 func CleanRepoUrl(repoUrl string) string {

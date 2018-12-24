@@ -74,7 +74,7 @@ func (j *JobGraph) BuildGraph(jobs []*config.Job) error {
 	return nil
 }
 
-func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error, wg *sync.WaitGroup) func(*config.Job) error {
+func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error, servicesWg *sync.WaitGroup) func(*config.Job) error {
 	return func(job *config.Job) error {
 		defer close(n.Done)
 
@@ -94,23 +94,22 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error, wg *sy
 		}
 
 		if job.Error != nil {
-			wg.Done()
 			return job.Error
 		}
 
 		if job.Service == true {
+			servicesWg.Add(1)
 			job.Detach = make(chan bool)
 
 			go func() {
 				defer close(job.Detach)
-				defer wg.Done()
+				defer servicesWg.Done()
 				job.Error = callback(job)
 			}()
 
 			_ = <-job.Detach
 		} else {
 			job.Error = callback(job)
-			wg.Done()
 		}
 
 		return job.Error
@@ -132,7 +131,7 @@ func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error
 	}
 
 	var wg sync.WaitGroup
-	var allWg sync.WaitGroup
+	var servicesWg sync.WaitGroup
 
 	errors := []error{}
 	for _, node := range sorted {
@@ -141,10 +140,9 @@ func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error
 		}
 
 		wg.Add(1)
-		allWg.Add(1)
 		go func(n *Node) {
 			defer wg.Done()
-			cb := j.WaitForDeps(n, callback, &allWg)
+			cb := j.WaitForDeps(n, callback, &servicesWg)
 			n.Job.Stop = stopCh
 			err = cb(n.Job)
 			if err != nil {
@@ -155,6 +153,6 @@ func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error
 
 	wg.Wait()
 	close(stopCh)
-	allWg.Wait()
+	servicesWg.Wait()
 	return errors
 }

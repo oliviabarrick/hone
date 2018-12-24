@@ -320,6 +320,28 @@ job "docker-build" {
 }
 ```
 
+# Services
+
+It is possible to create long running services that do not block jobs that depend on them.
+
+These are created as services and take all of the same arguments as a job:
+
+```
+service "nginx" {
+    image = "nginx:latest"
+    exec = ["nginx", "-g", "daemon off;"]
+}
+
+job "curl" {
+    deps = ["nginx"]
+    image = "alpine"
+    shell = "curl http://nginx/"
+}
+```
+
+Nginx would be started, curl would run, and then nginx would be torn down at the end
+of the build.
+
 # Reporting
 
 It is possible to report build status back to your Git provider. Hone has built in support

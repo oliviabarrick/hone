@@ -68,16 +68,6 @@ template "docker" {
     engine = "kubernetes"
 }
 
-service "nginx" {
-    image = "nginx:latest"
-    shell = "nginx -g 'daemon off;'"
-}
-
-job "curl" {
-    deps = ["nginx"]
-    shell = "curl http://nginx/"
-}
-
 job "test" {
     inputs = ["./cmd/", "./pkg/", "go.mod", "go.sum"]
     shell = "go test ./cmd/... ./pkg/..."
@@ -104,6 +94,7 @@ job "build-mac" {
     output = "hone_darwin"
 
     shell = "go build -v -o ./hone_darwin ./cmd/hone"
+    engine = "kubernetes"
 }
 
 job "build-kaniko-shim" {
