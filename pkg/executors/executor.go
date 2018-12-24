@@ -27,7 +27,7 @@ func ChooseEngine(config *types.Config, j *job.Job) (Engine, error) {
 	var orchestrator Engine
 
 	if engine == "kubernetes" {
-		if config.Cache.S3 == nil {
+		if config.Cache.S3 == nil || config.Cache.S3.Disabled {
 			return nil, errors.New("Kubernetes is not currently supported without an S3 configuration.")
 		}
 
