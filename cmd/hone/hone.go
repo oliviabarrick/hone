@@ -77,7 +77,6 @@ func main() {
 	}
 
 	var logWriter io.WriteCloser
-	var logUrl string
 
 	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {
@@ -86,12 +85,15 @@ func main() {
 		}
 		callback = cache.CacheJob(config.Cache.S3, callback)
 
+		var logUrl string
 		path := filepath.Join(report.GitCommit, fmt.Sprintf("%d.log", report.StartTime.Unix()))
 		logWriter, logUrl, err = config.Cache.S3.Writer("logs", path)
 		if err != nil {
 			logger.Errorf("Error writing logs: %s", err)
 			report.Exit(err)
 		}
+
+		report.SetLogURL(logUrl)
 	}
 
 	logger.InitLogger(longest, logWriter)
@@ -106,13 +108,9 @@ func main() {
 
 	errs = g.ResolveTarget(target, logger.LogJob(callback))
 
-	if logUrl != "" {
-		logger.Printf("Logs available: %s", logUrl)
-	}
-
 	report.Final(errs...)
 
-	if logUrl != "" {
+	if logWriter != nil {
 		err = logWriter.Close()
 		if err != nil {
 			log.Printf("Error uploading logs: %s", err)

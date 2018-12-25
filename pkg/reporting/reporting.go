@@ -30,6 +30,8 @@ type Report struct {
 	Success bool
 	Jobs []*job.Job
 
+	LogURL string
+
 	scms []*scm.SCM
 	cache cache.Cache
 	lock sync.Mutex
@@ -54,6 +56,10 @@ func New(target string, scms []*scm.SCM, cache cache.Cache) (Report, error) {
 		cache: cache,
 		scms: scms,
 	}, nil
+}
+
+func (r *Report) SetLogURL(url string) {
+	r.LogURL = url
 }
 
 func (r *Report) ReportJob(callback func(*job.Job) error) func(*job.Job) error {
@@ -116,6 +122,10 @@ func (r *Report) Final(errs ...error) {
 	if err != nil {
 		logger.Errorf("Error uploading report to cache: %s", err)
 		errs = append(errs, err)
+	}
+
+	if r.LogURL != "" {
+		logger.Printf("Logs available: %s", r.LogURL)
 	}
 
 	if len(errs) > 0 {
