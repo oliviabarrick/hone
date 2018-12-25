@@ -78,14 +78,13 @@ func Unmarshal(fname string) (*types.Config, error) {
 		}
 	}
 
-	repo, err := git.NewRepository()
-	if err != nil {
+	if repo, err := git.NewRepository(); err == nil {
+		for key, value := range repo.GitEnv() {
+			environ[key] = cty.StringVal(value)
+			config.Env[key] = value
+		}
+	} else {
 		logger.Printf("Failed to load git environment: %s", err)
-	}
-
-	for key, value := range repo.GitEnv() {
-		environ[key] = cty.StringVal(value)
-		config.Env[key] = value
 	}
 
 	variables := map[string]cty.Value{}

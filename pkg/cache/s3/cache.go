@@ -174,6 +174,10 @@ func (c *S3Cache) DumpCacheManifest(namespace, cacheKey string, entries []cache.
 }
 
 func (c *S3Cache) Enabled() bool {
+	if c == nil {
+		return false
+	}
+
 	return ! c.Disabled
 }
 

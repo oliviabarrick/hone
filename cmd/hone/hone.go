@@ -40,12 +40,12 @@ func main() {
 
 	scms, err := scm.InitSCMs(config.SCM, config.Env)
 	if err != nil {
-		log.Fatal(err)
+		logger.Printf("Could not initialize SCMs: %s", err)
 	}
 
 	report, err := reporting.New(target, scms, config.Cache.S3)
 	if err != nil {
-		log.Fatal(err)
+		logger.Printf("Could not initialize reporting: %s", err)
 	}
 
 	if err = scm.BuildStarted(scms); err != nil {

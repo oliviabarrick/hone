@@ -38,10 +38,7 @@ type Report struct {
 }
 
 func New(target string, scms []*scm.SCM, cache cache.Cache) (Report, error) {
-	repo, err := git.NewRepository()
-	if err != nil {
-		return Report{}, err
-	}
+	repo, _ := git.NewRepository()
 
 	branch, _ := repo.Branch()
 	commit, _ := repo.Commit()
