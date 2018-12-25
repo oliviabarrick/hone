@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+//go:generate go-bindata -pkg reporting -nomemcopy templates/...
+
 type Report struct {
 	GitBranch string
 	GitCommit string
@@ -90,7 +92,12 @@ func (r *Report) UploadReport() error {
 		return err
 	}
 
-	template.Must(template.ParseFiles("index.html")).Execute(reportWriter, struct{
+	data, err := Asset("templates/index.html")
+	if err != nil {
+		return err
+	}
+
+	template.Must(template.New("").Parse(string(data))).Execute(reportWriter, struct{
 		ReportJSON string
 	}{
 		ReportJSON: reportJsonUrl,

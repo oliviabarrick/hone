@@ -32,6 +32,7 @@ require (
 	github.com/hashicorp/vault v0.11.4
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
+	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/kvz/logstreamer v0.0.0-20150507115422-a635b98146f0
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect

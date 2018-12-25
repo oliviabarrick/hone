@@ -54,6 +54,7 @@ template "default" {
         "GO111MODULE" = "on"
         "GOCACHE" = "/build/.gocache"
         "GOPATH" = "/build/.go"
+        "GOBIN" = "/build/bin/"
     }
 }
 
@@ -68,7 +69,26 @@ template "docker" {
     engine = "kubernetes"
 }
 
+job "go-bindata" {
+    outputs = ["./bin/go-bindata"]
+    shell = "go get -u github.com/jteeuwen/go-bindata/..."
+}
+
+job "generate" {
+    deps = ["go-bindata"]
+
+    shell = "go generate ./pkg/reporting/"
+
+    inputs = ["./pkg/reporting/reporting.go", "./templates/*"]
+    outputs = ["./pkg/reporting/bindata.go"]
+
+    env = {
+        "PATH" = "/build/bin:/usr/local/go/bin"
+    }
+}
+
 job "test" {
+    deps = ["generate"]
     inputs = ["./cmd/", "./pkg/", "go.mod", "go.sum"]
     shell = "go test ./cmd/... ./pkg/..."
 }
