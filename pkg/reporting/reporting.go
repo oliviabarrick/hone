@@ -66,9 +66,9 @@ func (r *Report) ReportJob(callback func(*job.Job) error) func(*job.Job) error {
 	}
 }
 
-func (r *Report) UploadReport() error {
+func (r *Report) UploadReport() (string, error) {
 	if r.cache == nil || ! r.cache.Enabled() {
-		return nil
+		return "", nil
 	}
 
 	r.EndTime = time.Now().UTC()
@@ -77,24 +77,24 @@ func (r *Report) UploadReport() error {
 
 	reportJson, reportJsonUrl, err := r.cache.Writer("report-blobs", filepath.Join(base, "report.json"))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = json.NewEncoder(reportJson).Encode(r)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	reportJson.Close()
 
 	reportWriter, reportUrl, err := r.cache.Writer("reports", filepath.Join(base, "report.html"))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	data, err := Asset("templates/index.html")
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	template.Must(template.New("").Parse(string(data))).Execute(reportWriter, struct{
@@ -106,13 +106,13 @@ func (r *Report) UploadReport() error {
 	reportWriter.Close()
 
 	logger.Printf("Report uploaded to: %s", reportUrl)
-	return nil
+	return reportUrl, nil
 }
 
 func (r *Report) Exit(errs ...error) {
 	r.Success = len(errs) == 0
 
-	err := r.UploadReport()
+	reportUrl, err := r.UploadReport()
 	if err != nil {
 		logger.Errorf("Error uploading report to cache: %s", err)
 		errs = append(errs, err)
@@ -128,7 +128,7 @@ func (r *Report) Exit(errs ...error) {
 		logger.Successf("Build completed successfully!")
 	}
 
-	err = scm.ReportBuild(r.scms, r.Success)
+	err = scm.ReportBuild(r.scms, r.Success, reportUrl)
 	if err != nil {
 		logger.Errorf("Error reporting build to SCM: %s", err)
 		errs = append(errs, err)
