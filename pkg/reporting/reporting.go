@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"path/filepath"
 	"sync"
+	"time"
 )
 
 type Report struct {
@@ -19,6 +21,9 @@ type Report struct {
 	GitTag string
 
 	Target string
+
+	StartTime time.Time
+	EndTime time.Time
 
 	Success bool
 	Jobs []*job.Job
@@ -43,6 +48,7 @@ func New(target string, scms []*scm.SCM, cache cache.Cache) (Report, error) {
 		GitCommit: commit,
 		GitTag: tag,
 		Target: target,
+		StartTime: time.Now().UTC(),
 		cache: cache,
 		scms: scms,
 	}, nil
@@ -63,7 +69,11 @@ func (r *Report) UploadReport() error {
 		return nil
 	}
 
-	reportJson, reportJsonUrl, err := r.cache.Writer("report-blobs", "report.json")
+	r.EndTime = time.Now().UTC()
+
+	base := filepath.Join(r.GitCommit, fmt.Sprintf("%d", r.StartTime.Unix()))
+
+	reportJson, reportJsonUrl, err := r.cache.Writer("report-blobs", filepath.Join(base, "report.json"))
 	if err != nil {
 		return err
 	}
@@ -75,7 +85,7 @@ func (r *Report) UploadReport() error {
 
 	reportJson.Close()
 
-	reportWriter, reportUrl, err := r.cache.Writer("reports", "report.html")
+	reportWriter, reportUrl, err := r.cache.Writer("reports", filepath.Join(base, "report.html"))
 	if err != nil {
 		return err
 	}
