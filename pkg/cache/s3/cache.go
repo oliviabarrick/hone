@@ -8,7 +8,9 @@ import (
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/minio/minio-go"
+	"io"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"os"
 	"fmt"
@@ -173,4 +175,17 @@ func (c *S3Cache) Enabled() bool {
 
 func (c *S3Cache) BaseURL() string {
 	return fmt.Sprintf("https://%s.%s", c.Bucket, c.Endpoint)
+}
+
+func (c *S3Cache) Writer(namespace string, filename string) (io.WriteCloser, string, error) {
+	path := filepath.Join(namespace, filename)
+	url := fmt.Sprintf("%s/%s", c.BaseURL(), path)
+
+	reader, writer := io.Pipe()
+
+	go c.s3.PutObject(c.Bucket, path, reader, -1, minio.PutObjectOptions{
+		ContentType: mime.TypeByExtension(filepath.Ext(filename)),
+	})
+
+	return writer, url, nil
 }

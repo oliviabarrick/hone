@@ -7,6 +7,7 @@ import (
 	"github.com/cnf/structhash"
 	config "github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/logger"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -28,6 +29,7 @@ type Cache interface {
 	DumpCacheManifest(namespace, cacheKey string, entries []CacheEntry) error
 	Enabled() bool
 	BaseURL() string
+	Writer(string, string) (io.WriteCloser, string, error)
 }
 
 func WalkInputs(job *config.Job, fn func(string) error) error {

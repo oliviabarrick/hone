@@ -13,12 +13,9 @@ import (
 	"github.com/justinbarrick/hone/pkg/scm"
 	"github.com/justinbarrick/hone/pkg/reporting"
 	_ "net/http/pprof"
-	"encoding/json"
 	"net/http"
-	"html/template"
 	"log"
 	"os"
-	"fmt"
 )
 
 
@@ -45,30 +42,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	report, err := reporting.New(target)
+	report, err := reporting.New(target, scms, config.Cache.S3)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if err = scm.BuildStarted(scms); err != nil {
-		log.Fatal(err)
+		report.Exit(err)
 	}
 
 	g, err := graph.NewJobGraph(config.GetJobs())
 	if err != nil {
-		log.Fatal(err)
+		report.Exit(err)
 	}
 
 	longest, errs := g.LongestTarget(target)
 	if len(errs) != 0 {
-		done(errs, report, scms, config.Cache.S3)
+		report.Exit(errs...)
 	}
 
 	logger.InitLogger(longest)
 
 	config.DockerConfig = &docker.DockerConfig{}
 	if err := config.DockerConfig.Init(); err != nil {
-		log.Fatal(err)
+		report.Exit(err)
 	}
 
 	defer config.DockerConfig.Cleanup()
@@ -81,87 +78,19 @@ func main() {
 
 	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {
-			log.Fatal(err)
+			report.Exit(err)
 		}
 		callback = cache.CacheJob(config.Cache.S3, callback)
 	}
 
 	fileCache := config.Cache.File
 	if err = fileCache.Init(); err != nil {
-		log.Fatal(err)
+		report.Exit(err)
 	}
 	callback = report.ReportJob(cache.CacheJob(fileCache, callback))
 
 	go http.ListenAndServe("localhost:6060", nil)
 
 	errs = g.ResolveTarget(target, logger.LogJob(callback))
-	done(errs, report, scms, config.Cache.S3)
-}
-
-func done(errs []error, report reporting.Report, scms []*scm.SCM, cache cache.Cache) {
-	report.Success = len(errs) == 0
-
-	file, err := os.Create("report.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = json.NewEncoder(file).Encode(report)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	file.Close()
-
-	template, err := template.ParseFiles("index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if cache != nil && cache.Enabled() {
-		entry, err := cache.Set("report-blobs", "report.json")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		reportFile, err := os.Create("report.html")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		template.Execute(reportFile, struct{
-			ReportJSON string
-		}{
-			ReportJSON: fmt.Sprintf("/report-blobs/%s", entry.Hash),
-		})
-
-		reportFile.Close()
-
-		entry, err = cache.Set("reports", "report.html")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		logger.Printf("Report uploaded to: %s/reports/%s", cache.BaseURL(), entry.Hash)
-	}
-
-	if len(errs) != 0 {
-		if errs[0].Error() == fmt.Sprintf("Target %s not found.", report.Target) {
-			logger.Printf("Error: Target %s not found in configuration!", report.Target)
-		}
-
-		logger.Errorf("Exiting with failure.")
-
-		if err = scm.BuildErrored(scms); err != nil {
-			log.Fatal(err)
-		}
-
-		os.Exit(len(errs))
-	}
-
-	if err = scm.BuildCompleted(scms); err != nil {
-		log.Fatal(err)
-	}
-
-	logger.Successf("Build completed successfully!")
+	report.Exit(errs...)
 }

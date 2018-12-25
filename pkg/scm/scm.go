@@ -275,3 +275,10 @@ func BuildCompleted(scms []*SCM) error {
 	return nil
 }
 
+func ReportBuild(scms []*SCM, success bool) error {
+	if success {
+		return BuildCompleted(scms)
+	}
+
+	return BuildErrored(scms)
+}

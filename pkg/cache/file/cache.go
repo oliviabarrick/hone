@@ -130,5 +130,16 @@ func (c *FileCache) Enabled() bool {
 }
 
 func (c *FileCache) BaseURL() string {
-	return "./"
+	return c.CacheDir
+}
+
+func (c *FileCache) Writer(namespace string, filename string) (io.WriteCloser, string, error) {
+	path := filepath.Join(c.CacheDir, namespace, filename)
+
+	outFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return nil, path, err
+	}
+
+	return outFile, path, nil
 }
