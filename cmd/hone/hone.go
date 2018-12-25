@@ -11,8 +11,11 @@ import (
 	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/scm"
+	"github.com/justinbarrick/hone/pkg/reporting"
 	_ "net/http/pprof"
+	"encoding/json"
 	"net/http"
+	"html/template"
 	"log"
 	"os"
 	"fmt"
@@ -42,6 +45,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	report, err := reporting.New(target)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err = scm.BuildStarted(scms); err != nil {
 		log.Fatal(err)
 	}
@@ -53,17 +61,7 @@ func main() {
 
 	longest, errs := g.LongestTarget(target)
 	if len(errs) != 0 {
-		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
-			logger.Printf("Error: Target %s not found in configuration!", target)
-		}
-
-		logger.Printf("Exiting with failure.")
-
-		if err = scm.BuildErrored(scms); err != nil {
-			log.Fatal(err)
-		}
-
-		os.Exit(len(errs))
+		done(errs, report, scms, config.Cache.S3)
 	}
 
 	logger.InitLogger(longest)
@@ -92,13 +90,64 @@ func main() {
 	if err = fileCache.Init(); err != nil {
 		log.Fatal(err)
 	}
-	callback = cache.CacheJob(fileCache, callback)
+	callback = report.ReportJob(cache.CacheJob(fileCache, callback))
 
 	go http.ListenAndServe("localhost:6060", nil)
 
-	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
-		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
-			logger.Printf("Error: Target %s not found in configuration!", target)
+	errs = g.ResolveTarget(target, logger.LogJob(callback))
+	done(errs, report, scms, config.Cache.S3)
+}
+
+func done(errs []error, report reporting.Report, scms []*scm.SCM, cache cache.Cache) {
+	report.Success = len(errs) == 0
+
+	file, err := os.Create("report.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = json.NewEncoder(file).Encode(report)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	file.Close()
+
+	template, err := template.ParseFiles("index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if cache != nil && cache.Enabled() {
+		entry, err := cache.Set("report-blobs", "report.json")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		reportFile, err := os.Create("report.html")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		template.Execute(reportFile, struct{
+			ReportJSON string
+		}{
+			ReportJSON: fmt.Sprintf("/report-blobs/%s", entry.Hash),
+		})
+
+		reportFile.Close()
+
+		entry, err = cache.Set("reports", "report.html")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		logger.Printf("Report uploaded to: %s/reports/%s", cache.BaseURL(), entry.Hash)
+	}
+
+	if len(errs) != 0 {
+		if errs[0].Error() == fmt.Sprintf("Target %s not found.", report.Target) {
+			logger.Printf("Error: Target %s not found in configuration!", report.Target)
 		}
 
 		logger.Errorf("Exiting with failure.")

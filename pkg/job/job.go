@@ -2,6 +2,7 @@
 package job
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/justinbarrick/hone/pkg/utils"
@@ -9,24 +10,25 @@ import (
 )
 
 type Job struct {
-	Name    string             `hcl:"name,label"`
-	Template *string `hcl:"template" hash:"-"`
-	Image   *string            `hcl:"image"`
-	Shell   *string            `hcl:"shell"`
-	Exec    *[]string          `hcl:"exec"`
-	Inputs  *[]string          `hcl:"inputs"`
-	Input   *string            `hcl:"input"`
-	Outputs *[]string          `hcl:"outputs"`
-	Output  *string            `hcl:"output"`
-	Env     *map[string]string `hcl:"env"`
-	Deps    *[]string          `hcl:"deps"`
-	Engine  *string            `hcl:"engine" hash:"-"`
-	Condition *string          `hcl:"condition"`
-	Privileged *bool            `hcl:"privileged"`
-	Service bool               `hash:"-"`
-	Error   error              `hash:"-"`
-	Detach  chan bool          `hash:"-"`
-	Stop    chan bool          `hash:"-"`
+	Name    string             `hcl:"name,label" json:"name"`
+	Template *string `hcl:"template" hash:"-" json:"-"`
+	Image   *string            `hcl:"image" json:"image"`
+	Shell   *string            `hcl:"shell" json:"shell"`
+	Exec    *[]string          `hcl:"exec" json:"exec"`
+	Inputs  *[]string          `hcl:"inputs" json:"inputs"`
+	Outputs *[]string          `hcl:"outputs" json:"outputs"`
+	Env     *map[string]string `hcl:"env" json:"-"`
+	Deps    *[]string          `hcl:"deps" json:"deps"`
+	Engine  *string            `hcl:"engine" json:"engine" hash:"-"`
+	Condition *string          `hcl:"condition" json:"condition"`
+	Privileged *bool           `hcl:"privileged" json:"privileged"`
+	Service bool               `hash:"-" json:"service"`
+	Error   error              `hash:"-" json:"error"`
+	Cached  bool               `hash:"-" json:"cached"`
+	Hash         string        `hash:"-" json:"hash"`
+	OutputHashes map[string]string      `hash:"-" json:"outputHashes"`
+	Detach  chan bool          `hash:"-" json:"-"`
+	Stop    chan bool          `hash:"-" json:"-"`
 }
 
 func (j *Job) Default(def Job) {
@@ -42,14 +44,12 @@ func (j *Job) Default(def Job) {
 		j.Exec = def.Exec
 	}
 
-	if j.Inputs == nil && j.Input == nil {
+	if j.Inputs == nil {
 		j.Inputs = def.Inputs
-		j.Input = def.Input
 	}
 
-	if j.Outputs == nil && j.Output == nil {
+	if j.Outputs == nil {
 		j.Outputs = def.Outputs
-		j.Output = def.Output
 	}
 
 	if j.Engine == nil {
@@ -125,10 +125,6 @@ func (j Job) GetOutputs() []string {
 		outputs = *j.Outputs
 	}
 
-	if j.Output != nil {
-		outputs = append(outputs, *j.Output)
-	}
-
 	return outputs
 }
 
@@ -137,10 +133,6 @@ func (j Job) GetInputs() []string {
 
 	if j.Inputs != nil {
 		inputs = *j.Inputs
-	}
-
-	if j.Input != nil {
-		inputs = append(inputs, *j.Input)
 	}
 
 	return inputs
@@ -179,4 +171,60 @@ func (j Job) IsPrivileged() bool {
 	}
 
 	return *j.Privileged
+}
+
+func (j Job) MarshalJSON() ([]byte, error) {
+	deps := []string{}
+	if j.Deps != nil {
+		deps = *j.Deps
+	}
+
+	condition := ""
+	if j.Condition != nil {
+		condition = *j.Condition
+	}
+
+	privileged := false
+	if j.Privileged != nil {
+		privileged = *j.Privileged
+	}
+
+	errMsg := ""
+	if j.Error != nil {
+		errMsg = j.Error.Error()
+	}
+
+	return json.Marshal(struct {
+		Name string
+		Image string
+		Shell []string
+		Inputs []string
+		Outputs []string
+		Deps []string
+		Engine string
+		Condition string
+		Privileged bool
+		Service bool
+		Successful bool
+		Error string
+		Cached bool
+		Hash string
+		OutputHashes map[string]string
+	}{
+		Name: j.GetName(),
+		Image: j.GetImage(),
+		Shell: j.GetShell(),
+		Inputs: j.GetInputs(),
+		Outputs: j.GetOutputs(),
+		Deps: deps,
+		Engine: j.GetEngine(),
+		Condition: condition,
+		Privileged: privileged,
+		Service: j.Service,
+		Successful: (j.Error == nil),
+		Error: errMsg,
+		Cached: j.Cached,
+		Hash: j.Hash,
+		OutputHashes: j.OutputHashes,
+	})
 }

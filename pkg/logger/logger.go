@@ -92,7 +92,7 @@ func InitLogger(longestJob int) {
 		Handler: &LogHandler{
 			LongestJob: longestJob,
 		},
-		Level: log.InfoLevel,
+		Level: log.DebugLevel,
 	}
 }
 func LogWriter(job *config.Job) io.Writer {

@@ -1,0 +1,44 @@
+<html>
+  <head>
+    <title>Report</title>
+    <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script type="text/babel">
+      class App extends React.Component {
+        constructor(props) {
+          super(props);
+
+          this.state = {};
+
+          fetch(`{{ .ReportJSON }}`)
+          .then( (response) => {
+            return response.json()
+          }).then( (json) => {
+            this.setState(json)
+          });
+        }
+
+        render() {
+          return (
+            <div>
+              <p>Commit: {this.state.GitCommit}</p>
+            </div>
+          );
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id='root'></div>
+
+    <script type="text/babel">
+      ReactDOM.render(
+        <App/>,
+        document.getElementById('root')
+      );
+    </script>
+  </body>
+</html>

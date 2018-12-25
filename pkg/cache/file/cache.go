@@ -124,3 +124,11 @@ func (c *FileCache) DumpCacheManifest(namespace, cacheKey string, entries []cach
 
 	return json.NewEncoder(cacheFile).Encode(entries)
 }
+
+func (c *FileCache) Enabled() bool {
+	return true
+}
+
+func (c *FileCache) BaseURL() string {
+	return "./"
+}
