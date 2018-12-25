@@ -105,8 +105,10 @@ func (r *Report) UploadReport() (string, error) {
 
 	template.Must(template.New("").Parse(string(data))).Execute(reportWriter, struct{
 		ReportJSON string
+		LogURL string
 	}{
 		ReportJSON: reportJsonUrl,
+		LogURL: r.LogURL,
 	})
 
 	reportWriter.Close()
