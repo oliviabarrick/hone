@@ -164,11 +164,12 @@ func (s *SCM) Init(ctx context.Context) (err error) {
 	return
 }
 
-func (s SCM) PostStatus(state State, commit string, message string) error {
+func (s SCM) PostStatus(state State, commit string, message string, reportUrl string) error {
 	status := &scm.StatusInput{
 		State: scm.State(state),
 		Label: "hone",
 		Desc:  message,
+		Target: reportUrl,
 	}
 
 	_, _, err := s.client.Repositories.CreateStatus(s.ctx, s.GetRepo(), commit, status)
@@ -176,23 +177,23 @@ func (s SCM) PostStatus(state State, commit string, message string) error {
 }
 
 func (s SCM) BuildStarted() error {
-	return s.PostStatus(StateRunning, s.commit, "Build started!")
+	return s.PostStatus(StateRunning, s.commit, "Build started!", "")
 }
 
-func (s SCM) BuildCompleted() error {
-	return s.PostStatus(StateSuccess, s.commit, "Build completed successfully!")
+func (s SCM) BuildCompleted(reportUrl string) error {
+	return s.PostStatus(StateSuccess, s.commit, "Build completed successfully!", reportUrl)
 }
 
-func (s SCM) BuildFailed() error {
-	return s.PostStatus(StatePending, s.commit, "Build failed!")
+func (s SCM) BuildFailed(reportUrl string) error {
+	return s.PostStatus(StateError, s.commit, "Build failed!", reportUrl)
 }
 
-func (s SCM) BuildErrored() error {
-	return s.PostStatus(StateError, s.commit, "Build errored due to a configuration error!")
+func (s SCM) BuildErrored(reportUrl string) error {
+	return s.PostStatus(StateError, s.commit, "Build errored due to a configuration error!", reportUrl)
 }
 
-func (s SCM) BuildCanceled() error {
-	return s.PostStatus(StateCanceled, s.commit, "Build cancelled by user!")
+func (s SCM) BuildCanceled(reportUrl string) error {
+	return s.PostStatus(StateCanceled, s.commit, "Build cancelled by user!", reportUrl)
 }
 
 func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
@@ -255,9 +256,9 @@ func BuildStarted(scms []*SCM) error {
 	return nil
 }
 
-func BuildErrored(scms []*SCM) error {
+func BuildErrored(scms []*SCM, reportUrl string) error {
 	for _, scm := range scms {
-		if err := scm.BuildErrored(); err != nil && !IsCommitNotFound(err) {
+		if err := scm.BuildErrored(reportUrl); err != nil && !IsCommitNotFound(err) {
 			return err
 		}
 	}
@@ -265,9 +266,9 @@ func BuildErrored(scms []*SCM) error {
 	return nil
 }
 
-func BuildCompleted(scms []*SCM) error {
+func BuildCompleted(scms []*SCM, reportUrl string) error {
 	for _, scm := range scms {
-		if err := scm.BuildCompleted(); err != nil && !IsCommitNotFound(err) {
+		if err := scm.BuildCompleted(reportUrl); err != nil && !IsCommitNotFound(err) {
 			return err
 		}
 	}
@@ -275,3 +276,10 @@ func BuildCompleted(scms []*SCM) error {
 	return nil
 }
 
+func ReportBuild(scms []*SCM, success bool, reportUrl string) error {
+	if success {
+		return BuildCompleted(scms, reportUrl)
+	}
+
+	return BuildErrored(scms, reportUrl)
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/cnf/structhash"
 	config "github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/logger"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,6 +27,9 @@ type Cache interface {
 	Set(namespace, filePath string) (CacheEntry, error)
 	LoadCacheManifest(namespace, cacheKey string) ([]CacheEntry, error)
 	DumpCacheManifest(namespace, cacheKey string, entries []CacheEntry) error
+	Enabled() bool
+	BaseURL() string
+	Writer(string, string) (io.WriteCloser, string, error)
 }
 
 func WalkInputs(job *config.Job, fn func(string) error) error {
@@ -152,6 +156,8 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 			return err
 		}
 
+		job.Hash = cacheKey
+
 		cached, err := LoadCache(c, cacheKey, job)
 		if err != nil {
 			return err
@@ -164,6 +170,7 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 			}
 		} else {
 			logger.LogDebug(job, "Job cached.")
+			job.Cached = true
 		}
 
 		if len(job.GetOutputs()) == 0 && len(job.GetInputs()) == 0 {
@@ -171,9 +178,19 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 		}
 
 		logger.LogDebug(job, fmt.Sprintf("Dumping to cache (%s).", c.Name()))
-		if _, err = DumpOutputs(cacheKey, c, job.GetOutputs()); err != nil {
+		entries, err := DumpOutputs(cacheKey, c, job.GetOutputs())
+		if err != nil {
 			return err
 		}
+
+		if job.OutputHashes == nil {
+			job.OutputHashes = map[string]string{}
+		}
+
+		for _, entry := range entries {
+			job.OutputHashes[entry.Filename] = entry.Hash
+		}
+
 		return nil
 	}
 }

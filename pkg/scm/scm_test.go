@@ -24,6 +24,6 @@ func TestSCM(t *testing.T) {
 
 	err := scm.Init(context.TODO())
 	assert.Nil(t, err)
-	err = scm.PostStatus(StatePending, "43f77731a7a882a2616cfadcd9d23cd723f871ab", "success")
+	err = scm.PostStatus(StatePending, "43f77731a7a882a2616cfadcd9d23cd723f871ab", "success", "")
 	assert.Nil(t, err)
 }

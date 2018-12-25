@@ -54,6 +54,7 @@ template "default" {
         "GO111MODULE" = "on"
         "GOCACHE" = "/build/.gocache"
         "GOPATH" = "/build/.go"
+        "GOBIN" = "/build/bin/"
     }
 }
 
@@ -68,7 +69,26 @@ template "docker" {
     engine = "kubernetes"
 }
 
+job "go-bindata" {
+    outputs = ["./bin/go-bindata"]
+    shell = "go get -u github.com/jteeuwen/go-bindata/..."
+}
+
+job "generate" {
+    deps = ["go-bindata"]
+
+    shell = "go generate ./pkg/reporting/"
+
+    inputs = ["./pkg/reporting/reporting.go", "./templates/*"]
+    outputs = ["./pkg/reporting/bindata.go"]
+
+    env = {
+        "PATH" = "/build/bin:/usr/local/go/bin"
+    }
+}
+
 job "test" {
+    deps = ["generate"]
     inputs = ["./cmd/", "./pkg/", "go.mod", "go.sum"]
     shell = "go test ./cmd/... ./pkg/..."
 }
@@ -77,7 +97,7 @@ job "build" {
     deps = ["test"]
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "hone"
+    outputs = ["hone"]
 
     shell = "go build -v -o ./hone ./cmd/hone"
 }
@@ -91,14 +111,14 @@ job "build-mac" {
     }
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "hone_darwin"
+    outputs = ["hone_darwin"]
 
     shell = "go build -v -o ./hone_darwin ./cmd/hone"
 }
 
 job "build-kaniko-shim" {
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "docker/kaniko"
+    outputs = ["docker/kaniko"]
 
     shell = "go build -v -o ./docker/kaniko ./cmd/kaniko"
 }
@@ -121,7 +141,7 @@ job "build-cache-shim" {
     }
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "./docker/cache-shim"
+    outputs = ["./docker/cache-shim"]
 
     shell = "go build -ldflags '-w -extldflags -static' -o ./docker/cache-shim ./cmd/cache-shim"
 }

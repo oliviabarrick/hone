@@ -124,3 +124,22 @@ func (c *FileCache) DumpCacheManifest(namespace, cacheKey string, entries []cach
 
 	return json.NewEncoder(cacheFile).Encode(entries)
 }
+
+func (c *FileCache) Enabled() bool {
+	return true
+}
+
+func (c *FileCache) BaseURL() string {
+	return c.CacheDir
+}
+
+func (c *FileCache) Writer(namespace string, filename string) (io.WriteCloser, string, error) {
+	path := filepath.Join(c.CacheDir, namespace, filename)
+
+	outFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return nil, path, err
+	}
+
+	return outFile, path, nil
+}

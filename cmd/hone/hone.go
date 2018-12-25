@@ -11,11 +11,11 @@ import (
 	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/scm"
+	"github.com/justinbarrick/hone/pkg/reporting"
 	_ "net/http/pprof"
 	"net/http"
 	"log"
 	"os"
-	"fmt"
 )
 
 
@@ -42,35 +42,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err = scm.BuildStarted(scms); err != nil {
-		log.Fatal(err)
-	}
-
-	g, err := graph.NewJobGraph(config.GetJobs())
+	report, err := reporting.New(target, scms, config.Cache.S3)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	if err = scm.BuildStarted(scms); err != nil {
+		report.Exit(err)
+	}
+
+	g, err := graph.NewJobGraph(config.GetJobs())
+	if err != nil {
+		report.Exit(err)
+	}
+
 	longest, errs := g.LongestTarget(target)
 	if len(errs) != 0 {
-		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
-			logger.Printf("Error: Target %s not found in configuration!", target)
-		}
-
-		logger.Printf("Exiting with failure.")
-
-		if err = scm.BuildErrored(scms); err != nil {
-			log.Fatal(err)
-		}
-
-		os.Exit(len(errs))
+		report.Exit(errs...)
 	}
 
 	logger.InitLogger(longest)
 
 	config.DockerConfig = &docker.DockerConfig{}
 	if err := config.DockerConfig.Init(); err != nil {
-		log.Fatal(err)
+		report.Exit(err)
 	}
 
 	defer config.DockerConfig.Cleanup()
@@ -83,36 +78,19 @@ func main() {
 
 	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {
-			log.Fatal(err)
+			report.Exit(err)
 		}
 		callback = cache.CacheJob(config.Cache.S3, callback)
 	}
 
 	fileCache := config.Cache.File
 	if err = fileCache.Init(); err != nil {
-		log.Fatal(err)
+		report.Exit(err)
 	}
-	callback = cache.CacheJob(fileCache, callback)
+	callback = report.ReportJob(cache.CacheJob(fileCache, callback))
 
 	go http.ListenAndServe("localhost:6060", nil)
 
-	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
-		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
-			logger.Printf("Error: Target %s not found in configuration!", target)
-		}
-
-		logger.Errorf("Exiting with failure.")
-
-		if err = scm.BuildErrored(scms); err != nil {
-			log.Fatal(err)
-		}
-
-		os.Exit(len(errs))
-	}
-
-	if err = scm.BuildCompleted(scms); err != nil {
-		log.Fatal(err)
-	}
-
-	logger.Successf("Build completed successfully!")
+	errs = g.ResolveTarget(target, logger.LogJob(callback))
+	report.Exit(errs...)
 }

@@ -75,9 +75,7 @@ Settings:
 * `exec`: A command to execute without using bash (as a string array).
 * `deps`: A list of jobs that this job depends on.
 * `inputs`: A list of files, directories, or globs that this job depends on.
-* `input`: A file, directory, or glob that this job depends on.
 * `outputs`: A list of files that this job outputs.
-* `output`: A file that this job outputs.
 * `env`: A map of environment variables to add to the job.
 * `engine`: An execution engine to use, defaults to docker or the global engine setting.
 * `template`: the name of a Job template to use (see the section below on templates).
@@ -309,14 +307,14 @@ template "docker" {
 # Default template
 job "build" {
     shell = "go build -o binary ./cmd"
-    output = "binary"
-    input = "./cmd/main.go"
+    outputs = ["binary"]
+    inputs = ["./cmd/main.go"]
 }
 
 # Use the Docker template
 job "docker-build" {
     template = "docker"
-    input = "binary"
+    inputs = ["binary"]
     deps = ["build"]
 }
 ```

@@ -8,9 +8,12 @@ import (
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/minio/minio-go"
+	"io"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"os"
+	"fmt"
 	"path/filepath"
 )
 
@@ -51,6 +54,22 @@ func (c *S3Cache) Init() error {
 		} else if !exists {
 			return err
 		}
+	}
+
+	err = minioClient.SetBucketPolicy(c.Bucket, fmt.Sprintf(`{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Sid":"AddPerm",
+      "Effect":"Allow",
+      "Principal": "*",
+      "Action":["s3:GetObject"],
+      "Resource":["arn:aws:s3:::%s/reports/*", "arn:aws:s3:::%s/report-blobs/*"]
+    }
+  ]
+}`, c.Bucket, c.Bucket))
+	if err != nil && err.Error() != "200 OK" {
+		return err
 	}
 
 	logger.Printf("Initialized S3 cache.")
@@ -148,4 +167,25 @@ func (c *S3Cache) DumpCacheManifest(namespace, cacheKey string, entries []cache.
 	}
 
 	return nil
+}
+
+func (c *S3Cache) Enabled() bool {
+	return ! c.Disabled
+}
+
+func (c *S3Cache) BaseURL() string {
+	return fmt.Sprintf("https://%s.%s", c.Bucket, c.Endpoint)
+}
+
+func (c *S3Cache) Writer(namespace string, filename string) (io.WriteCloser, string, error) {
+	path := filepath.Join(namespace, filename)
+	url := fmt.Sprintf("%s/%s", c.BaseURL(), path)
+
+	reader, writer := io.Pipe()
+
+	go c.s3.PutObject(c.Bucket, path, reader, -1, minio.PutObjectOptions{
+		ContentType: mime.TypeByExtension(filepath.Ext(filename)),
+	})
+
+	return writer, url, nil
 }
