@@ -4,6 +4,8 @@ import (
 	config "github.com/justinbarrick/hone/pkg/job"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
+	"github.com/apex/log/handlers/json"
+	"github.com/apex/log/handlers/multi"
 	"github.com/fatih/color"
 	"bytes"
 	"fmt"
@@ -87,11 +89,17 @@ func (h *LogHandler) HandleLog(e *log.Entry) error {
 
 var logger = &log.Logger{}
 
-func InitLogger(longestJob int) {
+func InitLogger(longestJob int, remoteLog io.WriteCloser) {
+	handler := multi.New(&LogHandler{
+		LongestJob: longestJob,
+	})
+
+	if remoteLog != nil {
+		handler.Handlers = append(handler.Handlers, json.New(remoteLog))
+	}
+
 	logger = &log.Logger{
-		Handler: &LogHandler{
-			LongestJob: longestJob,
-		},
+		Handler: handler,
 		Level: log.DebugLevel,
 	}
 }

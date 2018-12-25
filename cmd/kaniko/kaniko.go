@@ -20,7 +20,7 @@ type DockerConfig struct {
 }
 
 func main() {
-	logger.InitLogger(0)
+	logger.InitLogger(0, nil)
 
 	if os.Getenv("DOCKER_USER") != "" && os.Getenv("DOCKER_PASS") != "" {
 		config := DockerConfig{

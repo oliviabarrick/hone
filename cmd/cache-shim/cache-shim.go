@@ -18,7 +18,7 @@ func main() {
 		SecretKey: os.Getenv("S3_SECRET_KEY"),
 	}
 
-	logger.InitLogger(0)
+	logger.InitLogger(0, nil)
 
 	if err := s3.Init(); err != nil {
 		log.Fatal(err)

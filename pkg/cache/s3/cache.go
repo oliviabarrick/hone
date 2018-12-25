@@ -64,10 +64,14 @@ func (c *S3Cache) Init() error {
       "Effect":"Allow",
       "Principal": "*",
       "Action":["s3:GetObject"],
-      "Resource":["arn:aws:s3:::%s/reports/*", "arn:aws:s3:::%s/report-blobs/*"]
+      "Resource":[
+        "arn:aws:s3:::%s/logs/*",
+        "arn:aws:s3:::%s/reports/*",
+        "arn:aws:s3:::%s/report-blobs/*"
+      ]
     }
   ]
-}`, c.Bucket, c.Bucket))
+}`, c.Bucket, c.Bucket, c.Bucket))
 	if err != nil && err.Error() != "200 OK" {
 		return err
 	}
@@ -177,15 +181,41 @@ func (c *S3Cache) BaseURL() string {
 	return fmt.Sprintf("https://%s.%s", c.Bucket, c.Endpoint)
 }
 
-func (c *S3Cache) Writer(namespace string, filename string) (io.WriteCloser, string, error) {
-	path := filepath.Join(namespace, filename)
-	url := fmt.Sprintf("%s/%s", c.BaseURL(), path)
+type S3Writer struct {
+	writer io.WriteCloser
+	done   chan error
+}
 
+func (w *S3Writer) Init(s3 *S3Cache, namespace, filename string) string {
 	reader, writer := io.Pipe()
 
-	go c.s3.PutObject(c.Bucket, path, reader, -1, minio.PutObjectOptions{
-		ContentType: mime.TypeByExtension(filepath.Ext(filename)),
-	})
+	path := filepath.Join(namespace, filename)
+	url := fmt.Sprintf("%s/%s", s3.BaseURL(), path)
 
+	w.done = make(chan error)
+
+	go func() {
+		_, err := s3.s3.PutObject(s3.Bucket, path, reader, -1, minio.PutObjectOptions{
+			ContentType: mime.TypeByExtension(filepath.Ext(filename)),
+		})
+		w.done <- err
+	}()
+
+	w.writer = writer
+	return url
+}
+
+func (w *S3Writer) Write(bytes []byte) (int, error) {
+	return w.writer.Write(bytes)
+}
+
+func (w *S3Writer) Close() error {
+	w.writer.Close()
+	return <-w.done
+}
+
+func (c *S3Cache) Writer(namespace string, filename string) (io.WriteCloser, string, error) {
+	writer := &S3Writer{}
+	url := writer.Init(c, namespace, filename)
 	return writer, url, nil
 }

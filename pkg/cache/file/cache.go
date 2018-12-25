@@ -136,6 +136,11 @@ func (c *FileCache) BaseURL() string {
 func (c *FileCache) Writer(namespace string, filename string) (io.WriteCloser, string, error) {
 	path := filepath.Join(c.CacheDir, namespace, filename)
 
+	err := os.MkdirAll(filepath.Dir(path), 0777)
+	if err != nil && !os.IsExist(err) {
+		return nil, path, err
+	}
+
 	outFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, path, err

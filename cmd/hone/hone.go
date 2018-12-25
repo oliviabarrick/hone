@@ -12,10 +12,11 @@ import (
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/scm"
 	"github.com/justinbarrick/hone/pkg/reporting"
-	_ "net/http/pprof"
-	"net/http"
+	"fmt"
 	"log"
+	"io"
 	"os"
+	"path/filepath"
 )
 
 
@@ -30,7 +31,7 @@ func main() {
 		target = os.Args[2]
 	}
 
-	logger.InitLogger(0)
+	logger.InitLogger(0, nil)
 
 	config, err := config.Unmarshal(honePath)
 	if err != nil {
@@ -48,11 +49,13 @@ func main() {
 	}
 
 	if err = scm.BuildStarted(scms); err != nil {
+		logger.Errorf("Error initializing SCMs: %s", err)
 		report.Exit(err)
 	}
 
 	g, err := graph.NewJobGraph(config.GetJobs())
 	if err != nil {
+		logger.Errorf("Error initializing job graph: %s", err)
 		report.Exit(err)
 	}
 
@@ -61,36 +64,61 @@ func main() {
 		report.Exit(errs...)
 	}
 
-	logger.InitLogger(longest)
-
-	config.DockerConfig = &docker.DockerConfig{}
-	if err := config.DockerConfig.Init(); err != nil {
-		report.Exit(err)
-	}
-
-	defer config.DockerConfig.Cleanup()
-
 	callback := func(j *job.Job) error {
 		return executors.Run(config, j)
 	}
 
 	callback = events.EventCallback(config.Env, callback)
 
+	fileCache := config.Cache.File
+	if err = fileCache.Init(); err != nil {
+		logger.Errorf("Error initializing file cache: %s", err)
+		report.Exit(err)
+	}
+
+	var logWriter io.WriteCloser
+	var logUrl string
+
 	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
 		if err = config.Cache.S3.Init(); err != nil {
+			logger.Errorf("Error initializing S3: %s", err)
 			report.Exit(err)
 		}
 		callback = cache.CacheJob(config.Cache.S3, callback)
+
+		path := filepath.Join(report.GitCommit, fmt.Sprintf("%d.log", report.StartTime.Unix()))
+		logWriter, logUrl, err = config.Cache.S3.Writer("logs", path)
+		if err != nil {
+			logger.Errorf("Error writing logs: %s", err)
+			report.Exit(err)
+		}
 	}
 
-	fileCache := config.Cache.File
-	if err = fileCache.Init(); err != nil {
-		report.Exit(err)
-	}
+	logger.InitLogger(longest, logWriter)
+
 	callback = report.ReportJob(cache.CacheJob(fileCache, callback))
 
-	go http.ListenAndServe("localhost:6060", nil)
+	config.DockerConfig = &docker.DockerConfig{}
+	if err := config.DockerConfig.Init(); err != nil {
+		logger.Errorf("Error initializing Docker: %s", err)
+		report.Exit(err)
+	}
 
 	errs = g.ResolveTarget(target, logger.LogJob(callback))
-	report.Exit(errs...)
+
+	if logUrl != "" {
+		logger.Printf("Logs available: %s", logUrl)
+	}
+
+	report.Final(errs...)
+
+	if logUrl != "" {
+		err = logWriter.Close()
+		if err != nil {
+			log.Printf("Error uploading logs: %s", err)
+		}
+	}
+
+	config.DockerConfig.Cleanup()
+	os.Exit(len(errs))
 }

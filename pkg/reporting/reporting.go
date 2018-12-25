@@ -109,7 +109,7 @@ func (r *Report) UploadReport() (string, error) {
 	return reportUrl, nil
 }
 
-func (r *Report) Exit(errs ...error) {
+func (r *Report) Final(errs ...error) {
 	r.Success = len(errs) == 0
 
 	reportUrl, err := r.UploadReport()
@@ -133,6 +133,9 @@ func (r *Report) Exit(errs ...error) {
 		logger.Errorf("Error reporting build to SCM: %s", err)
 		errs = append(errs, err)
 	}
+}
 
+func (r *Report) Exit(errs ...error) {
+	r.Final(errs...)
 	os.Exit(len(errs))
 }
