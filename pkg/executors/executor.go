@@ -42,16 +42,16 @@ func ChooseEngine(config *types.Config, j *job.Job) (Engine, error) {
 		}
 
 		orchestrator = &k
-		logger.Printf("Using Kubernetes for running jobs.\n")
+		logger.Log(j, "Using Kubernetes for running job.")
 	} else if engine == "local" {
 		orchestrator = &local.Local{}
-		logger.Printf("Using local for running jobs.\n")
+		logger.Log(j, "Using local for running job.")
 	} else {
 		orchestrator = &docker.Docker{
 			DockerConfig: config.DockerConfig,
 		}
 
-		logger.Printf("Using Docker for running jobs.\n")
+		logger.Log(j, "Using Docker for running job.")
 	}
 
 	err := orchestrator.Init()

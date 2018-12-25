@@ -80,7 +80,7 @@ func Unmarshal(fname string) (*types.Config, error) {
 
 	repo, err := git.NewRepository()
 	if err != nil {
-		logger.Printf("Failed to load git environment: %s\n", err)
+		logger.Printf("Failed to load git environment: %s", err)
 	}
 
 	for key, value := range repo.GitEnv() {

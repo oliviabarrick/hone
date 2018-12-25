@@ -88,7 +88,7 @@ func (d *Docker) Pull(ctx context.Context, image string) error {
 }
 
 func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
-	logger.Log(j, fmt.Sprintf("Started container: %s\n", d.ctr[:8]))
+	logger.Log(j, fmt.Sprintf("Started container: %s", d.ctr[:8]))
 	out, err := d.DockerConfig.docker.ContainerLogs(ctx, d.ctr, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -110,7 +110,7 @@ func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
 		statusCode = status.StatusCode
 	}
 
-	logger.Log(j, fmt.Sprintf("Container exited: %s, status code %d\n", j.GetName(), statusCode))
+	logger.Log(j, fmt.Sprintf("Container exited with status: %d", statusCode))
 	if statusCode != 128 && statusCode != 0 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
 	} else if ! j.Service && statusCode == 128 {

@@ -30,10 +30,43 @@ func main() {
 		target = os.Args[2]
 	}
 
+	logger.InitLogger(0)
+
 	config, err := config.Unmarshal(honePath)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	scms, err := scm.InitSCMs(config.SCM, config.Env)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = scm.BuildStarted(scms); err != nil {
+		log.Fatal(err)
+	}
+
+	g, err := graph.NewJobGraph(config.GetJobs())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	longest, errs := g.LongestTarget(target)
+	if len(errs) != 0 {
+		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
+			logger.Printf("Error: Target %s not found in configuration!", target)
+		}
+
+		logger.Printf("Exiting with failure.")
+
+		if err = scm.BuildErrored(scms); err != nil {
+			log.Fatal(err)
+		}
+
+		os.Exit(len(errs))
+	}
+
+	logger.InitLogger(longest)
 
 	config.DockerConfig = &docker.DockerConfig{}
 	if err := config.DockerConfig.Init(); err != nil {
@@ -61,28 +94,14 @@ func main() {
 	}
 	callback = cache.CacheJob(fileCache, callback)
 
-	scms, err := scm.InitSCMs(config.SCM, config.Env)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err = scm.BuildStarted(scms); err != nil {
-		log.Fatal(err)
-	}
-
 	go http.ListenAndServe("localhost:6060", nil)
-
-	g, err := graph.NewJobGraph(config.GetJobs())
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	if errs := g.ResolveTarget(target, logger.LogJob(callback)); len(errs) != 0 {
 		if errs[0].Error() == fmt.Sprintf("Target %s not found.", target) {
-			logger.Printf("Error: Target %s not found in configuration!\n", target)
+			logger.Printf("Error: Target %s not found in configuration!", target)
 		}
 
-		logger.Printf("Exiting with failure.\n")
+		logger.Errorf("Exiting with failure.")
 
 		if err = scm.BuildErrored(scms); err != nil {
 			log.Fatal(err)
@@ -94,4 +113,6 @@ func main() {
 	if err = scm.BuildCompleted(scms); err != nil {
 		log.Fatal(err)
 	}
+
+	logger.Successf("Build completed successfully!")
 }

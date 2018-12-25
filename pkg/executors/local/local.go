@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,7 +34,7 @@ func (l *Local) Init() error {
 }
 
 func (l *Local) Start(ctx context.Context, j *job.Job) error {
-	return l.Exec(j.GetShell(), j.GetEnv())
+	return l.Exec(j.GetShell(), j.GetEnv(), j)
 }
 
 func (l *Local) Wait(ctx context.Context, j *job.Job) error {
@@ -44,7 +45,7 @@ func (l *Local) Stop(ctx context.Context, j *job.Job) error {
 	return nil
 }
 
-func (l *Local) Exec(command []string, env map[string]string) error {
+func (l *Local) Exec(command []string, env map[string]string, j *job.Job) error {
 	cmd := exec.Command(command[0], command[1:]...)
 
 	envList := []string{}
@@ -63,8 +64,13 @@ func (l *Local) Exec(command []string, env map[string]string) error {
 		return err
 	}
 
-	l.stdout = io.TeeReader(stdout, os.Stdout)
-	l.stderr = io.TeeReader(stderr, os.Stderr)
+	if j == nil {
+		l.stdout = io.TeeReader(stdout, os.Stdout)
+		l.stderr = io.TeeReader(stderr, os.Stderr)
+	} else {
+		l.stdout = io.TeeReader(stdout, logger.LogWriter(j))
+		l.stderr = io.TeeReader(stderr, logger.LogWriterError(j))
+	}
 
 	if err = cmd.Start(); err != nil {
 		return err
@@ -93,7 +99,7 @@ func Exec(command []string, env map[string]string) error {
 		return err
 	}
 
-	if err := l.Exec(command, env); err != nil {
+	if err := l.Exec(command, env, nil); err != nil {
 		return err
 	}
 

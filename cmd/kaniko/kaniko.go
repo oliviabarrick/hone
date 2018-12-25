@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/justinbarrick/hone/pkg/executors/local"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"log"
 	"os"
 )
@@ -19,6 +20,8 @@ type DockerConfig struct {
 }
 
 func main() {
+	logger.InitLogger(0)
+
 	if os.Getenv("DOCKER_USER") != "" && os.Getenv("DOCKER_PASS") != "" {
 		config := DockerConfig{
 			Auths: map[string]DockerAuth{},

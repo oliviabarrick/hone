@@ -163,14 +163,14 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 				return err
 			}
 		} else {
-			logger.Log(job, "Job cached.")
+			logger.LogDebug(job, "Job cached.")
 		}
 
 		if len(job.GetOutputs()) == 0 && len(job.GetInputs()) == 0 {
 			return nil
 		}
 
-		logger.Log(job, fmt.Sprintf("Dumping to cache (%s).", c.Name()))
+		logger.LogDebug(job, fmt.Sprintf("Dumping to cache (%s).", c.Name()))
 		if _, err = DumpOutputs(cacheKey, c, job.GetOutputs()); err != nil {
 			return err
 		}
@@ -192,7 +192,7 @@ func LoadCache(c Cache, cacheKey string, job *config.Job) (bool, error) {
 			if err == nil {
 				hash, _ := HashFile(entry.Filename)
 				if hash == entry.Hash {
-					logger.Log(job, fmt.Sprintf("Skipping upto date file %s.", entry.Filename))
+					logger.LogDebug(job, fmt.Sprintf("Skipping upto date file %s.", entry.Filename))
 					fetch = false
 				}
 			}
@@ -206,7 +206,7 @@ func LoadCache(c Cache, cacheKey string, job *config.Job) (bool, error) {
 				if err != nil {
 					return false, err
 				}
-				logger.Log(job, fmt.Sprintf("Loaded %s from cache (%s).", entry.Filename, c.Name()))
+				logger.LogDebug(job, fmt.Sprintf("Loaded %s from cache (%s).", entry.Filename, c.Name()))
 			}
 		}
 

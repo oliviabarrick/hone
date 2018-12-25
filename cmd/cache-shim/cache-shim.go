@@ -18,6 +18,8 @@ func main() {
 		SecretKey: os.Getenv("S3_SECRET_KEY"),
 	}
 
+	logger.InitLogger(0)
+
 	if err := s3.Init(); err != nil {
 		log.Fatal(err)
 	}
@@ -38,7 +40,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		logger.Printf("Loaded %s from cache (%s).\n", entry.Filename, s3.Name())
+		logger.Printf("Loaded %s from cache (%s).", entry.Filename, s3.Name())
 	}
 
 	outputs := []string{}
@@ -61,5 +63,5 @@ func main() {
 	if _, err = cache.DumpOutputs(cacheKey, &s3, outputs); err != nil {
 		log.Fatal(err)
 	}
-	logger.Printf("Dumped outputs to cache (%s).\n", s3.Name())
+	logger.Printf("Dumped outputs to cache (%s).", s3.Name())
 }

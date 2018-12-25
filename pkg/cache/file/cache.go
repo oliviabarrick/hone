@@ -33,7 +33,7 @@ func (c *FileCache) Init() error {
 		return err
 	}
 
-	logger.Printf("Initialized file cache.\n")
+	logger.Printf("Initialized file cache.")
 	return nil
 }
 

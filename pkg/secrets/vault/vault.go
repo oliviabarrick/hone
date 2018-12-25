@@ -15,7 +15,7 @@ type Vault struct {
 }
 
 func (v *Vault) Init() error {
-	logger.Printf("Initializing vault.\n")
+	logger.Printf("Initializing vault.")
 
 	client, err := api.NewClient(&api.Config{
 		Address: v.Address,

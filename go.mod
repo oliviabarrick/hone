@@ -2,6 +2,7 @@ module github.com/justinbarrick/hone
 
 require (
 	github.com/antlr/antlr4 v0.0.0-20181130174051-b3f00ca72aaa // indirect
+	github.com/apex/log v1.1.0
 	github.com/bmatcuk/doublestar v1.1.1
 	github.com/caibirdme/yql v0.0.0-20180319101359-315dfc5afc87
 	github.com/cnf/structhash v0.0.0-20180104161610-62a607eb0224
@@ -11,6 +12,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/drone/go-scm v1.0.5
+	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.39.0 // indirect
 	github.com/gogo/protobuf v1.1.1 // indirect
@@ -31,6 +33,8 @@ require (
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/kvz/logstreamer v0.0.0-20150507115422-a635b98146f0
+	github.com/mattn/go-colorable v0.0.9 // indirect
+	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/minio/minio-go v6.0.9+incompatible
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -40,6 +44,7 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/ryanuber/go-glob v0.0.0-20170128012129-256dc444b735 // indirect
+	github.com/sirupsen/logrus v1.2.0
 	github.com/stretchr/testify v1.2.2
 	github.com/zclconf/go-cty v0.0.0-20181017232614-01c5aba823a6
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect

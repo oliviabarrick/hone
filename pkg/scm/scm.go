@@ -209,7 +209,7 @@ func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 	if err != nil {
 		return finalScms, errors.New(fmt.Sprintf("checking if repository is dirty: %s", err))
 	} else if dirty {
-		logger.Printf("Not posting status because directory is dirty.\n")
+		logger.Printf("Not posting status because directory is dirty.")
 		return finalScms, nil
 	}
 	*/
@@ -229,7 +229,7 @@ func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 			return finalScms, err
 		}
 
-		logger.Printf("Initialized reporting provider: %s\n", scm.GetProvider())
+		logger.Printf("Initialized reporting provider: %s", scm.GetProvider())
 		finalScms = append(finalScms, scm)
 	}
 
@@ -238,7 +238,7 @@ func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 
 func IsCommitNotFound(err error) bool {
 	if strings.Contains(err.Error(), "No commit found for SHA") {
-		logger.Printf("Notice: did not post status since commit SHA not found upstream.\n")
+		logger.Printf("Notice: did not post status since commit SHA not found upstream.")
 		return true
 	}
 

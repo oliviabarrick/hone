@@ -90,7 +90,7 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error, servic
 
 		if len(failedDeps) > 0 {
 			job.Error = errors.New(fmt.Sprintf("Failed dependencies: %s", failedDeps))
-			logger.Log(job, job.Error.Error())
+			logger.LogError(job, job.Error.Error())
 		}
 
 		if job.Error != nil {
@@ -116,9 +116,7 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error, servic
 	}
 }
 
-func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error) []error {
-	stopCh := make(chan bool)
-
+func (j *JobGraph) IterTarget(target string, callback func(*Node) error) []error {
 	targetId := utils.Crc(target)
 	targetNode := j.graph.Node(targetId)
 	if targetNode == nil {
@@ -130,29 +128,69 @@ func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error
 		return []error{err}
 	}
 
-	var wg sync.WaitGroup
-	var servicesWg sync.WaitGroup
-
 	errors := []error{}
 	for _, node := range sorted {
 		if !topo.PathExistsIn(j.graph, node, targetNode) {
 			continue
 		}
 
+		err := callback(node.(*Node))
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	return errors
+}
+
+func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error) []error {
+	stopCh := make(chan bool)
+
+	var wg sync.WaitGroup
+	var servicesWg sync.WaitGroup
+
+	errors := []error{}
+
+	iterErrors := j.IterTarget(target, func(node *Node) error {
 		wg.Add(1)
+
 		go func(n *Node) {
 			defer wg.Done()
 			cb := j.WaitForDeps(n, callback, &servicesWg)
 			n.Job.Stop = stopCh
-			err = cb(n.Job)
+			err := cb(n.Job)
 			if err != nil {
 				errors = append(errors, err)
 			}
-		}(node.(*Node))
-	}
+		}(node)
+
+		return nil
+	})
+
+	errors = append(errors, iterErrors...)
 
 	wg.Wait()
 	close(stopCh)
 	servicesWg.Wait()
 	return errors
+}
+
+func (j *JobGraph) LongestTarget(target string) (int, []error) {
+	longestJob := 0
+	lock := sync.Mutex{}
+
+	errors := j.IterTarget(target, func(n *Node) error {
+		lock.Lock()
+
+		name := n.Job.GetName()
+
+		if len(name) > longestJob {
+			longestJob = len(name)
+		}
+
+		lock.Unlock()
+		return nil
+	})
+
+	return longestJob, errors
 }

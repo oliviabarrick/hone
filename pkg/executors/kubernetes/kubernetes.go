@@ -91,7 +91,7 @@ func (k *Kubernetes) watch(j *job.Job) (<-chan watch.Event, error) {
 
 	if pod.Status.Phase != "Running" && pod.Status.Phase != "Succeeded" {
 		k.Logs(j, j.GetName())
-		return k.watchCh, errors.New(fmt.Sprintf("Invalid pod status: %s\n", pod.Status.Phase))
+		return k.watchCh, errors.New(fmt.Sprintf("Invalid pod status: %s", pod.Status.Phase))
 	}
 
 	return k.watchCh, nil
