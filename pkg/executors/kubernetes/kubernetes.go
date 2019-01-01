@@ -283,7 +283,7 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 						"/bin/sh", "-c",
 						"cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.hone-ca-certificates.crt",
 					},
-					WorkingDir:      "/build",
+					WorkingDir:      filepath.Join("/build", j.GetWorkdir()),
 					Env:             env,
 					VolumeMounts: []corev1.VolumeMount{
 						{

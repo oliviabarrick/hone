@@ -22,6 +22,7 @@ type Job struct {
 	Engine  *string            `hcl:"engine" json:"engine" hash:"-"`
 	Condition *string          `hcl:"condition" json:"condition"`
 	Privileged *bool           `hcl:"privileged" json:"privileged"`
+	Workdir *string            `hcl:"workdir" json:"workdir"`
 	Service bool               `hash:"-" json:"service"`
 	Error   error              `hash:"-" json:"error"`
 	Cached  bool               `hash:"-" json:"cached"`
@@ -164,6 +165,14 @@ func (j Job) GetEnv() map[string]string {
 	}
 	return *j.Env
 }
+
+func (j Job) GetWorkdir() string {
+	if j.Workdir == nil {
+		return ""
+	}
+	return *j.Workdir
+}
+
 
 func (j Job) IsPrivileged() bool {
 	if j.Privileged == nil {

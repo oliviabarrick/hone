@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	"time"
+	"path/filepath"
 )
 
 type DockerConfig struct {
@@ -147,7 +148,7 @@ func (d *Docker) Start(ctx context.Context, j *job.Job) error {
 		Image:      j.GetImage(),
 		Entrypoint: j.GetShell(),
 		Env:        env,
-		WorkingDir: "/build",
+		WorkingDir: filepath.Join("/build", j.GetWorkdir()),
 	}, &container.HostConfig{
 		Mounts: []mount.Mount{
 			{
