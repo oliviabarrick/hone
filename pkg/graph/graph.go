@@ -3,7 +3,7 @@ package graph
 import (
 	"errors"
 	"fmt"
-	config "github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/utils"
 	"gonum.org/v1/gonum/graph"
@@ -16,66 +16,97 @@ type JobGraph struct {
 	graph *simple.DirectedGraph
 }
 
-type Node struct {
-	Job  *config.Job
-	Done chan bool
+func ID(job job.JobInt) int64 {
+	return utils.Crc(job.GetName())
 }
 
-func NewNode(job *config.Job) *Node {
-	return &Node{
+type Node struct {
+	Job  job.JobInt
+	Done chan bool
+	deps map[string]bool
+}
+
+func NewNode(job job.JobInt) *Node {
+	node := &Node{
 		Job:  job,
 		Done: make(chan bool),
 	}
+
+	for _, dep := range job.GetDeps() {
+		node.AddDep(dep)
+	}
+
+	return node
 }
 
 func (n Node) ID() int64 {
-	return n.Job.ID()
+	return ID(n.Job)
 }
 
-func NewJobGraph(jobs []*config.Job) (JobGraph, error) {
+func (n *Node) AddDep(dep string) {
+	n.deps[dep] = true
+}
+
+func (n Node) GetDeps() []string {
+	deps := []string{}
+
+	for dep, _ := range n.deps {
+		deps = append(deps, dep)
+	}
+
+	return deps
+}
+
+func NewJobGraph(jobs []job.JobInt) JobGraph {
 	graph := JobGraph{
 		graph: simple.NewDirectedGraph(),
 	}
 
-	err := graph.BuildGraph(jobs)
-	return graph, err
+	graph.BuildGraph(jobs)
+	return graph
 }
 
-func (j *JobGraph) BuildGraph(jobs []*config.Job) error {
-	jobsMap := map[string]*config.Job{}
-	for _, job := range jobs {
-		jobsMap[job.GetName()] = job
-	}
+func (j *JobGraph) setEdges() error {
+	nodes := j.graph.Nodes()
 
-	for _, job := range jobs {
-		if j.graph.Node(job.ID()) == nil {
-			j.graph.AddNode(NewNode(job))
-		}
-
-		if job.Deps != nil {
-			for _, dep := range *job.Deps {
-				depJob := jobsMap[dep]
-				if depJob == nil {
-					return errors.New(fmt.Sprintf("Dependency not found: %s", dep))
-				}
-
-				if j.graph.Node(depJob.ID()) == nil {
-					j.graph.AddNode(NewNode(depJob))
-				}
-
-				j.graph.SetEdge(simple.Edge{
-					T: j.graph.Node(job.ID()),
-					F: j.graph.Node(depJob.ID()),
-				})
-			}
+	for node := nodes.Node(); node != nil; node = nodes.Node() {
+		for _, dep := range node.(*Node).GetDeps() {
+			j.graph.SetEdge(simple.Edge{
+				T: node,
+				F: j.graph.Node(utils.Crc(dep)),
+			})
 		}
 	}
 
 	return nil
 }
 
-func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error, servicesWg *sync.WaitGroup) func(*config.Job) error {
-	return func(job *config.Job) error {
+func (j *JobGraph) AddDep(job job.JobInt, dep string) error {
+	node := j.graph.Node(ID(job))
+	if node == nil {
+		return fmt.Errorf("Job not in graph.")
+	}
+
+	node.(*Node).AddDep(dep)
+	return nil
+}
+
+func (j *JobGraph) AddJob(job job.JobInt) {
+	j.graph.AddNode(NewNode(job))
+}
+
+func (j *JobGraph) BuildGraph(jobs []job.JobInt) {
+	if jobs == nil {
+		return
+	}
+
+	for _, job := range jobs {
+		j.AddJob(job)
+	}
+}
+
+func (j *JobGraph) WaitForDeps(n *Node, callback func(job.JobInt) error, servicesWg *sync.WaitGroup) func(job.JobInt) error {
+	return func(job job.JobInt) error {
 		defer close(n.Done)
 
 		failedDeps := []string{}
@@ -83,36 +114,33 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func(*config.Job) error, servic
 		for _, node := range graph.NodesOf(j.graph.To(n.ID())) {
 			d := node.(*Node)
 			_ = <-d.Done
-			if d.Job.Error != nil {
+			if d.Job.GetError() != nil {
 				failedDeps = append(failedDeps, d.Job.GetName())
 			}
 		}
 
 		if len(failedDeps) > 0 {
-			job.Error = errors.New(fmt.Sprintf("Failed dependencies: %s", failedDeps))
-			logger.LogError(job, job.Error.Error())
+			n.Job.SetError(errors.New(fmt.Sprintf("Failed dependencies: %s", failedDeps)))
+			logger.LogError(job, n.Job.GetError().Error())
 		}
 
-		if job.Error != nil {
-			return job.Error
+		if n.Job.GetError() != nil {
+			return n.Job.GetError()
 		}
 
-		if job.Service == true {
-			servicesWg.Add(1)
-			job.Detach = make(chan bool)
+		servicesWg.Add(1)
+		detach := make(chan bool)
+		job.SetDetach(detach)
 
-			go func() {
-				defer close(job.Detach)
-				defer servicesWg.Done()
-				job.Error = callback(job)
-			}()
+		go func() {
+			defer close(detach)
+			defer servicesWg.Done()
+			n.Job.SetError(callback(job))
+		}()
 
-			_ = <-job.Detach
-		} else {
-			job.Error = callback(job)
-		}
+		_ = <-detach
 
-		return job.Error
+		return n.Job.GetError()
 	}
 }
 
@@ -122,6 +150,8 @@ func (j *JobGraph) IterTarget(target string, callback func(*Node) error) []error
 	if targetNode == nil {
 		return []error{errors.New(fmt.Sprintf("Target %s not found.", target))}
 	}
+
+	j.setEdges()
 
 	sorted, err := topo.Sort(j.graph)
 	if err != nil {
@@ -143,7 +173,7 @@ func (j *JobGraph) IterTarget(target string, callback func(*Node) error) []error
 	return errors
 }
 
-func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error) []error {
+func (j *JobGraph) ResolveTarget(target string, callback func(job.JobInt) error) []error {
 	stopCh := make(chan bool)
 
 	var wg sync.WaitGroup
@@ -157,7 +187,7 @@ func (j *JobGraph) ResolveTarget(target string, callback func(*config.Job) error
 		go func(n *Node) {
 			defer wg.Done()
 			cb := j.WaitForDeps(n, callback, &servicesWg)
-			n.Job.Stop = stopCh
+			n.Job.SetStop(stopCh)
 			err := cb(n.Job)
 			if err != nil {
 				errors = append(errors, err)

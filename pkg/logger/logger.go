@@ -103,7 +103,7 @@ func InitLogger(longestJob int, remoteLog io.WriteCloser) {
 		Level: log.DebugLevel,
 	}
 }
-func LogWriter(job *config.Job) io.Writer {
+func LogWriter(job config.JobInt) io.Writer {
 	return &LogIOWriter{
 		Logger: logger.WithFields(log.Fields{
 			"job": job.GetName(),
@@ -112,7 +112,7 @@ func LogWriter(job *config.Job) io.Writer {
 	}
 }
 
-func LogWriterError(job *config.Job) io.Writer {
+func LogWriterError(job config.JobInt) io.Writer {
 	return &LogIOWriter{
 		Logger: logger.WithFields(log.Fields{
 			"job": job.GetName(),
@@ -135,25 +135,25 @@ func Successf(message string, args ...interface{}) {
 	}).Infof(message, args...)
 }
 
-func LoggerForJob(job *config.Job) *log.Entry {
+func LoggerForJob(job config.JobInt) *log.Entry {
 	return logger.WithFields(log.Fields{
 		"job": job.GetName(),
 	})
 }
 
-func Log(job *config.Job, message string) {
+func Log(job config.JobInt, message string) {
 	LoggerForJob(job).Info(strings.TrimSpace(message))
 }
 
-func LogError(job *config.Job, message string) {
+func LogError(job config.JobInt, message string) {
 	LoggerForJob(job).Error(strings.TrimSpace(message))
 }
 
-func LogDebug(job *config.Job, message string) {
+func LogDebug(job config.JobInt, message string) {
 	LoggerForJob(job).Debug(strings.TrimSpace(message))
 }
 
-func LogSuccess(job *config.Job, message string) {
+func LogSuccess(job config.JobInt, message string) {
 	LoggerForJob(job).WithFields(log.Fields{
 		"success": true,
 	}).Info(strings.TrimSpace(message))

@@ -5,9 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/justinbarrick/hone/pkg/utils"
 	"strings"
 )
+
+type JobInt interface {
+	GetName() string
+	GetDeps() []string
+	GetError() error
+	SetError(error)
+	SetDetach(chan bool)
+	SetStop(chan bool)
+}
 
 type Job struct {
 	Name    string             `hcl:"name,label" json:"name"`
@@ -24,12 +32,12 @@ type Job struct {
 	Privileged *bool           `hcl:"privileged" json:"privileged"`
 	Workdir *string            `hcl:"workdir" json:"workdir"`
 	Service bool               `hash:"-" json:"service"`
-	Error   error              `hash:"-" json:"error"`
 	Cached  bool               `hash:"-" json:"cached"`
 	Hash         string        `hash:"-" json:"hash"`
 	OutputHashes map[string]string      `hash:"-" json:"outputHashes"`
 	Detach  chan bool          `hash:"-" json:"-"`
 	Stop    chan bool          `hash:"-" json:"-"`
+	Error   error              `hash:"-" json:"error"`
 }
 
 func (j *Job) Default(def Job) {
@@ -101,10 +109,6 @@ func (j Job) Validate(engine string) error {
 	return nil
 }
 
-func (j Job) ID() int64 {
-	return utils.Crc(j.GetName())
-}
-
 func (j Job) GetName() string {
 	return j.Name
 }
@@ -173,6 +177,29 @@ func (j Job) GetWorkdir() string {
 	return *j.Workdir
 }
 
+func (j Job) GetError() error {
+	return j.Error
+}
+
+func (j *Job) SetError(err error) {
+	j.Error = err
+}
+
+func (j *Job) SetStop(stopCh chan bool) {
+	j.Stop = stopCh
+}
+
+func (j *Job) SetDetach(detachCh chan bool) {
+	j.Detach = detachCh
+}
+
+func (j Job) GetDeps() []string {
+	if j.Deps == nil {
+		return []string{}
+	}
+
+	return *j.Deps
+}
 
 func (j Job) IsPrivileged() bool {
 	if j.Privileged == nil {

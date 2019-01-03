@@ -72,15 +72,19 @@ func (c Config) GetEngine() string {
 	return ""
 }
 
-func (c Config) GetJobs() []*job.Job {
-	jobs := []*job.Job{}
+func (c Config) GetJobs() []job.JobInt {
+	jobs := []job.JobInt{}
 
 	if c.Services != nil {
-		jobs = append(jobs, c.Services...)
+		for _, service := range c.Services {
+			jobs = append(jobs, service)
+		}
 	}
 
 	if c.Jobs != nil {
-		jobs = append(jobs, c.Jobs...)
+		for _, job := range c.Jobs {
+			jobs = append(jobs, job)
+		}
 	}
 
 	return jobs

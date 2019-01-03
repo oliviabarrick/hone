@@ -53,11 +53,7 @@ func main() {
 		report.Exit(err)
 	}
 
-	g, err := graph.NewJobGraph(config.GetJobs())
-	if err != nil {
-		logger.Errorf("Error initializing job graph: %s", err)
-		report.Exit(err)
-	}
+	g := graph.NewJobGraph(config.GetJobs())
 
 	longest, errs := g.LongestTarget(target)
 	if len(errs) != 0 {
@@ -106,7 +102,9 @@ func main() {
 		report.Exit(err)
 	}
 
-	errs = g.ResolveTarget(target, logger.LogJob(callback))
+	errs = g.ResolveTarget(target, func(j job.JobInt) error {
+		return logger.LogJob(callback)(j.(*job.Job))
+	})
 
 	report.Final(errs...)
 
