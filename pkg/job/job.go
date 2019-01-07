@@ -2,20 +2,12 @@
 package job
 
 import (
+	"github.com/justinbarrick/hone/pkg/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 )
-
-type JobInt interface {
-	GetName() string
-	GetDeps() []string
-	GetError() error
-	SetError(error)
-	SetDetach(chan bool)
-	SetStop(chan bool)
-}
 
 type Job struct {
 	Name    string             `hcl:"name,label" json:"name"`
@@ -38,6 +30,7 @@ type Job struct {
 	Detach  chan bool          `hash:"-" json:"-"`
 	Stop    chan bool          `hash:"-" json:"-"`
 	Error   error              `hash:"-" json:"error"`
+	done    chan bool          `hash:"-"`
 }
 
 func (j *Job) Default(def Job) {
@@ -181,6 +174,14 @@ func (j Job) GetError() error {
 	return j.Error
 }
 
+func (j *Job) GetDone() (chan bool) {
+	if j.done == nil {
+		j.done = make(chan bool)
+	}
+
+	return j.done
+}
+
 func (j *Job) SetError(err error) {
 	j.Error = err
 }
@@ -199,6 +200,20 @@ func (j Job) GetDeps() []string {
 	}
 
 	return *j.Deps
+}
+
+func (j *Job) AddDep(dep string) {
+	if j.Deps == nil {
+		j.Deps = &[]string{}
+	}
+
+	for _, oldDep := range *j.Deps {
+		if oldDep == dep {
+			return
+		}
+	}
+
+	*j.Deps = append(*j.Deps, dep)
 }
 
 func (j Job) IsPrivileged() bool {
@@ -263,4 +278,8 @@ func (j Job) MarshalJSON() ([]byte, error) {
 		Hash: j.Hash,
 		OutputHashes: j.OutputHashes,
 	})
+}
+
+func (j *Job) ID() int64 {
+	return utils.Crc(j.GetName())
 }

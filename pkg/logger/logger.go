@@ -1,7 +1,8 @@
 package logger
 
 import (
-	config "github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/json"
@@ -103,7 +104,7 @@ func InitLogger(longestJob int, remoteLog io.WriteCloser) {
 		Level: log.DebugLevel,
 	}
 }
-func LogWriter(job config.JobInt) io.Writer {
+func LogWriter(job node.Node) io.Writer {
 	return &LogIOWriter{
 		Logger: logger.WithFields(log.Fields{
 			"job": job.GetName(),
@@ -112,7 +113,7 @@ func LogWriter(job config.JobInt) io.Writer {
 	}
 }
 
-func LogWriterError(job config.JobInt) io.Writer {
+func LogWriterError(job node.Node) io.Writer {
 	return &LogIOWriter{
 		Logger: logger.WithFields(log.Fields{
 			"job": job.GetName(),
@@ -135,32 +136,32 @@ func Successf(message string, args ...interface{}) {
 	}).Infof(message, args...)
 }
 
-func LoggerForJob(job config.JobInt) *log.Entry {
+func LoggerForJob(job node.Node) *log.Entry {
 	return logger.WithFields(log.Fields{
 		"job": job.GetName(),
 	})
 }
 
-func Log(job config.JobInt, message string) {
+func Log(job node.Node, message string) {
 	LoggerForJob(job).Info(strings.TrimSpace(message))
 }
 
-func LogError(job config.JobInt, message string) {
+func LogError(job node.Node, message string) {
 	LoggerForJob(job).Error(strings.TrimSpace(message))
 }
 
-func LogDebug(job config.JobInt, message string) {
+func LogDebug(job node.Node, message string) {
 	LoggerForJob(job).Debug(strings.TrimSpace(message))
 }
 
-func LogSuccess(job config.JobInt, message string) {
+func LogSuccess(job node.Node, message string) {
 	LoggerForJob(job).WithFields(log.Fields{
 		"success": true,
 	}).Info(strings.TrimSpace(message))
 }
 
-func LogJob(callback func(*config.Job) error) func(*config.Job) error {
-	return func(job *config.Job) error {
+func LogJob(callback func(*job.Job) error) func(*job.Job) error {
+	return func(job *job.Job) error {
 		Log(job, fmt.Sprintf("Running job \"%s\".", job.GetName()))
 		err := callback(job)
 		if err != nil {

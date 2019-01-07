@@ -8,41 +8,86 @@ import (
 	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/graph"
+	"github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
+	"github.com/zclconf/go-cty/cty/function"
+	"github.com/zclconf/go-cty/cty/function/stdlib"
 	"github.com/davecgh/go-spew/spew"
 )
 
-func checkErrors(parser *hclparse.Parser, diagnostics hcl.Diagnostics) error {
+type Remains interface {
+	GetRemain() hcl.Body
+}
+
+type LoadJobs struct {
+	Jobs []struct {
+		Name string `hcl:"name,label"`
+		Remain hcl.Body `hcl:",remain"`
+	} `hcl:"job,block"`
+	Remain hcl.Body `hcl:",remain"`
+}
+
+func (l LoadJobs) GetRemain() hcl.Body {
+	return l.Remain
+}
+
+type Parser struct {
+	parser *hclparse.Parser
+	remain hcl.Body
+}
+
+func NewParser() Parser {
+	return Parser{
+		parser: hclparse.NewParser(),
+	}
+}
+
+func (p *Parser) Parse(config string) error {
+	hclFile, diags := p.parser.ParseHCL([]byte(config), "test")
+	p.remain = hclFile.Body
+	return p.checkErrors(diags)
+}
+
+func (p *Parser) checkErrors(diagnostics hcl.Diagnostics) error {
 	if diagnostics.HasErrors() {
-		wr := hcl.NewDiagnosticTextWriter(os.Stderr, parser.Files(), 78, true)
+		wr := hcl.NewDiagnosticTextWriter(os.Stderr, p.parser.Files(), 78, true)
 		wr.WriteDiagnostics(diagnostics)
 		return errors.New("HCL error")
 	}
 	return nil
 }
 
-func DecodeJobs(config string) ([]*job.Job, error) {
-	parser := hclparse.NewParser()
+func (p *Parser) DecodeBody(body hcl.Body, val interface{}, ctx *hcl.EvalContext) error {
+	if ctx == nil {
+		ctx = &hcl.EvalContext{}
+	}
 
-	hclFile, diags := parser.ParseHCL([]byte(config), "test")
-	if err := checkErrors(parser, diags); err != nil {
+	if ctx.Functions == nil {
+		ctx.Functions = map[string]function.Function{}
+	}
+
+	ctx.Functions["concat"] = stdlib.ConcatFunc
+
+	return p.checkErrors(gohcl.DecodeBody(body, ctx, val))
+}
+
+func (p *Parser) DecodeRemains(val Remains, ctx *hcl.EvalContext) error {
+	err := p.DecodeBody(p.remain, val, ctx)
+
+	p.remain = val.GetRemain()
+
+	return err
+}
+
+func (p *Parser) DecodeJobs() ([]*job.Job, error) {
+	load := LoadJobs{}
+
+	if err := p.DecodeRemains(&load, nil); err != nil {
 		return nil, err
 	}
 
-	load := struct {
-		Jobs []struct {
-			Name string `hcl:"name,label"`
-			Remain hcl.Body `hcl:",remain"`
-		} `hcl:"job,block"`
-	}{}
-
-	diags = gohcl.DecodeBody(hclFile.Body, nil, &load)
-	if err := checkErrors(parser, diags); err != nil {
-		return nil, err
-	}
-
-	g := graph.NewJobGraph(nil)
+	g := graph.NewGraph(nil)
 
 	remains := map[string]hcl.Body{}
 
@@ -53,10 +98,10 @@ func DecodeJobs(config string) ([]*job.Job, error) {
 			Name: partialJob.Name,
 		}
 
-		g.AddJob(j)
+		g.AddNode(j)
 
 		attributes, diags := partialJob.Remain.JustAttributes()
-		if err := checkErrors(parser, diags); err != nil {
+		if err := p.checkErrors(diags); err != nil {
 			return nil, err
 		}
 
@@ -80,8 +125,8 @@ func DecodeJobs(config string) ([]*job.Job, error) {
 	jobs := []*job.Job{}
 	jobMap := map[string]cty.Value{}
 
-	errors := g.IterSorted(func(node *graph.Node) (err error) {
-		job := node.Job.(*job.Job)
+	errors := g.IterSorted(func(node node.Node) (err error) {
+		job := node.(*job.Job)
 
 		context := &hcl.EvalContext{}
 		if len(jobMap) > 0 {
@@ -90,10 +135,7 @@ func DecodeJobs(config string) ([]*job.Job, error) {
 			}
 		}
 
-		spew.Dump(jobMap)
-
-		diags := gohcl.DecodeBody(remains[job.GetName()], context, job)
-		if err := checkErrors(parser, diags); err != nil {
+		if err := p.DecodeBody(remains[job.GetName()], job, context); err != nil {
 			return err
 		}
 

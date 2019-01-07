@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/justinbarrick/hone/pkg/cache/file"
 	"github.com/justinbarrick/hone/pkg/cache/s3"
 	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
@@ -72,20 +73,20 @@ func (c Config) GetEngine() string {
 	return ""
 }
 
-func (c Config) GetJobs() []job.JobInt {
-	jobs := []job.JobInt{}
+func (c Config) GetNodes() []node.Node {
+	nodes := []node.Node{}
 
 	if c.Services != nil {
 		for _, service := range c.Services {
-			jobs = append(jobs, service)
+			nodes = append(nodes, service)
 		}
 	}
 
 	if c.Jobs != nil {
 		for _, job := range c.Jobs {
-			jobs = append(jobs, job)
+			nodes = append(nodes, job)
 		}
 	}
 
-	return jobs
+	return nodes
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/justinbarrick/hone/pkg/executors"
 	"github.com/justinbarrick/hone/pkg/executors/docker"
 	"github.com/justinbarrick/hone/pkg/graph"
+	"github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/logger"
@@ -53,7 +54,7 @@ func main() {
 		report.Exit(err)
 	}
 
-	g := graph.NewJobGraph(config.GetJobs())
+	g := graph.NewGraph(config.GetNodes())
 
 	longest, errs := g.LongestTarget(target)
 	if len(errs) != 0 {
@@ -102,8 +103,8 @@ func main() {
 		report.Exit(err)
 	}
 
-	errs = g.ResolveTarget(target, func(j job.JobInt) error {
-		return logger.LogJob(callback)(j.(*job.Job))
+	errs = g.ResolveTarget(target, func(n node.Node) error {
+		return logger.LogJob(callback)(n.(*job.Job))
 	})
 
 	report.Final(errs...)
