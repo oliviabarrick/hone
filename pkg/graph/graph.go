@@ -30,6 +30,7 @@ func NewNode(job job.JobInt) *Node {
 	node := &Node{
 		Job:  job,
 		Done: make(chan bool),
+		deps: map[string]bool{},
 	}
 
 	for _, dep := range job.GetDeps() {
@@ -69,7 +70,7 @@ func NewJobGraph(jobs []job.JobInt) JobGraph {
 func (j *JobGraph) setEdges() error {
 	nodes := j.graph.Nodes()
 
-	for node := nodes.Node(); node != nil; node = nodes.Node() {
+	for _, node := range graph.NodesOf(nodes) {
 		for _, dep := range node.(*Node).GetDeps() {
 			j.graph.SetEdge(simple.Edge{
 				T: node,
@@ -144,13 +145,7 @@ func (j *JobGraph) WaitForDeps(n *Node, callback func(job.JobInt) error, service
 	}
 }
 
-func (j *JobGraph) IterTarget(target string, callback func(*Node) error) []error {
-	targetId := utils.Crc(target)
-	targetNode := j.graph.Node(targetId)
-	if targetNode == nil {
-		return []error{errors.New(fmt.Sprintf("Target %s not found.", target))}
-	}
-
+func (j *JobGraph) IterSorted(callback func(*Node) error) []error {
 	j.setEdges()
 
 	sorted, err := topo.Sort(j.graph)
@@ -160,17 +155,28 @@ func (j *JobGraph) IterTarget(target string, callback func(*Node) error) []error
 
 	errors := []error{}
 	for _, node := range sorted {
-		if !topo.PathExistsIn(j.graph, node, targetNode) {
-			continue
-		}
-
 		err := callback(node.(*Node))
 		if err != nil {
 			errors = append(errors, err)
 		}
 	}
-
 	return errors
+}
+
+func (j *JobGraph) IterTarget(target string, callback func(*Node) error) []error {
+	targetId := utils.Crc(target)
+	targetNode := j.graph.Node(targetId)
+	if targetNode == nil {
+		return []error{errors.New(fmt.Sprintf("Target %s not found.", target))}
+	}
+
+	return j.IterSorted(func(node *Node) error {
+		if !topo.PathExistsIn(j.graph, j.graph.Node(node.ID()), targetNode) {
+			return nil
+		}
+
+		return callback(node)
+	})
 }
 
 func (j *JobGraph) ResolveTarget(target string, callback func(job.JobInt) error) []error {

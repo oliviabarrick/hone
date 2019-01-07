@@ -15,7 +15,7 @@ job "hello" {
 
 job "world" {
 	image = "debian:stretch"
-	inputs = ["${jobs.hello.outputs}"]
+	inputs = jobs.hello.outputs
 	shell = "echo world"
 }
 `
@@ -25,12 +25,12 @@ job "world" {
 	assert.Equal(t, 2, len(jobs))
 
 	assert.Equal(t, "hello", jobs[0].GetName())
-	assert.Equal(t, []string{"/bin/sh", "-c", "echo hi > hello"}, jobs[0].GetShell())
+	assert.Equal(t, []string{"/bin/sh", "-cex", "echo hi > hello"}, jobs[0].GetShell())
 	assert.Equal(t, []string{}, jobs[0].GetInputs())
 	assert.Equal(t, []string{"hello"}, jobs[0].GetOutputs())
 
 	assert.Equal(t, "world", jobs[1].GetName())
-	assert.Equal(t, []string{"/bin/sh", "-c", "echo world"}, jobs[1].GetShell())
+	assert.Equal(t, []string{"/bin/sh", "-cex", "echo world"}, jobs[1].GetShell())
 	assert.Equal(t, []string{"hello"}, jobs[1].GetInputs())
 	assert.Equal(t, []string{}, jobs[1].GetOutputs())
 }
