@@ -3,7 +3,7 @@ package main
 
 import (
 	"github.com/justinbarrick/hone/pkg/cache"
-	"github.com/justinbarrick/hone/pkg/config"
+	"github.com/justinbarrick/hone/pkg/config2"
 	"github.com/justinbarrick/hone/pkg/executors"
 	"github.com/justinbarrick/hone/pkg/executors/docker"
 	"github.com/justinbarrick/hone/pkg/graph"

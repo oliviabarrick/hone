@@ -283,3 +283,29 @@ job "test" {
 	assert.Equal(t, len(jobs), 1)
 	assert.Equal(t, jobs[0].GetEnv()["HELLO"], "hello")
 }
+
+func TestConfigDecodeConfig(t *testing.T) {
+	example := `
+secrets = [
+    "MY_SECRET"
+]
+
+job "test" {
+    image = "lol"
+    env = {
+        "HELLO" = "${secrets.MY_SECRET}"
+    }
+}
+`
+
+	os.Setenv("MY_SECRET", "hello")
+	defer os.Unsetenv("MY_SECRET")
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	config, err := parser.DecodeConfig()
+	assert.Nil(t, err)
+	assert.Equal(t, len(config.Jobs), 1)
+}
