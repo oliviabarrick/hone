@@ -6,7 +6,9 @@ import (
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
 	"github.com/hashicorp/hcl2/gohcl"
+	"github.com/justinbarrick/hone/pkg/git"
 	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/graph"
 	"github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/justinbarrick/hone/pkg/secrets/vault"
@@ -153,6 +155,14 @@ func (p *Parser) DecodeEnv() (map[string]string, error) {
 			}
 			envMap[env[0]] = val
 		}
+	}
+
+	if repo, err := git.NewRepository(); err == nil {
+		for key, value := range repo.GitEnv() {
+			envMap[key] = value
+		}
+	} else {
+		logger.Printf("Failed to load git environment: %s", err)
 	}
 
 	p.ctx.Variables["env"], err = gocty.ToCtyValue(envMap, cty.Map(cty.String))

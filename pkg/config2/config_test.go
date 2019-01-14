@@ -197,10 +197,11 @@ env = [
 	env, err := parser.DecodeEnv()
 	assert.Nil(t, err)
 
-	assert.Equal(t, env, map[string]string {
-		"MY_VAR": "",
-		"OTHER_VAR": "hello",
-	})
+	assert.Equal(t, env["MY_VAR"], "")
+	assert.Equal(t, env["OTHER_VAR"], "hello")
+	assert.NotEqual(t, env["GIT_BRANCH"], "")
+	assert.NotEqual(t, env["GIT_COMMIT"], "")
+	assert.NotEqual(t, env["GIT_COMMIT_SHORT"], "")
 }
 
 func TestConfigEnvWithJob(t *testing.T) {
