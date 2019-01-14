@@ -2,6 +2,8 @@
 package job
 
 import (
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/gocty"
 	"github.com/justinbarrick/hone/pkg/utils"
 	"encoding/json"
 	"errors"
@@ -203,6 +205,10 @@ func (j Job) GetDeps() []string {
 }
 
 func (j *Job) AddDep(dep string) {
+	if dep == j.GetName() {
+		return
+	}
+
 	if j.Deps == nil {
 		j.Deps = &[]string{}
 	}
@@ -282,4 +288,80 @@ func (j Job) MarshalJSON() ([]byte, error) {
 
 func (j *Job) ID() int64 {
 	return utils.Crc(j.GetName())
+}
+
+func (j Job) setMapBool(objMap map[string]cty.Value, key string, value *bool) {
+	if value != nil {
+		objMap[key] = cty.BoolVal(*value)
+	} else {
+		objMap[key] = cty.BoolVal(false)
+	}
+}
+
+func (j Job) setMapString(objMap map[string]cty.Value, key string, value *string) {
+	if value != nil {
+		objMap[key] = cty.StringVal(*value)
+	} else {
+		objMap[key] = cty.StringVal("")
+	}
+}
+
+func (j Job) setMapStringList(objMap map[string]cty.Value, key string, value *[]string) error {
+	if value != nil {
+		valueEncoded, err := gocty.ToCtyValue(value, cty.List(cty.String))
+		if err != nil {
+			return err
+		}
+		objMap[key] = valueEncoded
+	} else {
+		objMap[key] = cty.ListValEmpty(cty.String)
+	}
+
+	return nil
+}
+
+func (j Job) setMapStringMap(objMap map[string]cty.Value, key string, value *map[string]string) error {
+	if value != nil {
+		valueEncoded, err := gocty.ToCtyValue(value, cty.Map(cty.String))
+		if err != nil {
+			return err
+		}
+		objMap[key] = valueEncoded
+	} else {
+		objMap[key] = cty.MapValEmpty(cty.String)
+	}
+
+	return nil
+}
+
+
+func (j *Job) ToCty() (cty.Value, error) {
+	objMap := map[string]cty.Value{
+		"name": cty.StringVal(j.Name),
+	}
+
+	j.setMapString(objMap, "image", j.Image)
+	j.setMapString(objMap, "shell", j.Shell)
+	j.setMapString(objMap, "workdir", j.Workdir)
+	j.setMapString(objMap, "condition", j.Condition)
+	j.setMapString(objMap, "engine", j.Engine)
+	j.setMapBool(objMap, "privileged", j.Privileged)
+
+	if err := j.setMapStringList(objMap, "exec", j.Exec); err != nil {
+		return cty.NilVal, err
+	}
+
+	if err := j.setMapStringList(objMap, "inputs", j.Inputs); err != nil {
+		return cty.NilVal, err
+	}
+
+	if err := j.setMapStringList(objMap, "outputs", j.Outputs); err != nil {
+		return cty.NilVal, err
+	}
+
+	if err := j.setMapStringMap(objMap, "env", j.Env); err != nil {
+		return cty.NilVal, err
+	}
+
+	return cty.ObjectVal(objMap), nil
 }
