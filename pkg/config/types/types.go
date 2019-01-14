@@ -17,15 +17,15 @@ type Config struct {
 	Secrets      map[string]string
 	SCM          []*scm.SCM
 	Jobs         []*job.Job
-	Cache        *CacheConfig
+	Cache        CacheConfig
 	Kubernetes   *kubernetes.Kubernetes
 	DockerConfig *docker.DockerConfig
 	Engine       *string
 }
 
 type CacheConfig struct {
-	S3   *s3cache.S3Cache
-	File *filecache.FileCache
+	S3   *s3cache.S3Cache     `hcl:"s3,block"`
+	File *filecache.FileCache `hcl:"file,block"`
 }
 
 func (c Config) Validate() error {

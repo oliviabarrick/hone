@@ -257,7 +257,7 @@ secrets = [
 func TestConfigSecretsWithJob(t *testing.T) {
 	example := `
 secrets = [
-    "MY_SECRET"
+    "MY_SECRET=hello"
 ]
 
 job "test" {
@@ -267,9 +267,6 @@ job "test" {
     }
 }
 `
-
-	os.Setenv("MY_SECRET", "hello")
-	defer os.Unsetenv("MY_SECRET")
 
 	parser := NewParser()
 	err := parser.Parse(example)
@@ -287,7 +284,7 @@ job "test" {
 func TestConfigDecodeConfig(t *testing.T) {
 	example := `
 secrets = [
-    "MY_SECRET"
+    "MY_SECRET=hello"
 ]
 
 job "test" {
@@ -297,9 +294,6 @@ job "test" {
     }
 }
 `
-
-	os.Setenv("MY_SECRET", "hello")
-	defer os.Unsetenv("MY_SECRET")
 
 	parser := NewParser()
 	err := parser.Parse(example)

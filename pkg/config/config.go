@@ -1,12 +1,15 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
 	"github.com/hashicorp/hcl2/gohcl"
-	"github.com/justinbarrick/hone/pkg/config2/types"
+	"github.com/justinbarrick/hone/pkg/cache/file"
+	"github.com/justinbarrick/hone/pkg/config/types"
 	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
 	"github.com/justinbarrick/hone/pkg/git"
 	"github.com/justinbarrick/hone/pkg/job"
@@ -19,6 +22,7 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+//	"github.com/davecgh/go-spew/spew"
 )
 
 type Remains interface {
@@ -114,6 +118,59 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 		p.ctx.Functions["reverse"] = stdlib.ReverseFunc
 		p.ctx.Functions["strlen"] = stdlib.StrlenFunc
 		p.ctx.Functions["substr"] = stdlib.SubstrFunc
+		p.ctx.Functions["basename"] = function.New(&function.Spec{
+			Params: []function.Parameter{
+				{
+					Name:             "path",
+					Type:             cty.String,
+				},
+			},
+			Type: function.StaticReturnType(cty.String),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				return cty.StringVal(filepath.Base(args[0].AsString())), nil
+			},
+		})
+		p.ctx.Functions["pathjoin"] = function.New(&function.Spec{
+			VarParam: &function.Parameter{
+				Name:      "paths",
+				Type:      cty.String,
+			},
+			Type: function.StaticReturnType(cty.String),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				paths := []string{}
+
+				for _, arg := range args {
+					paths = append(paths, arg.AsString())
+				}
+
+				return cty.StringVal(filepath.Join(paths...)), nil
+    	},
+		})
+		p.ctx.Functions["join"] = function.New(&function.Spec{
+			Params: []function.Parameter{
+				{
+					Name:             "strs",
+					Type:             cty.List(cty.String),
+				},
+				{
+					Name:             "sep",
+					Type:             cty.String,
+				},
+			},
+			Type: function.StaticReturnType(cty.String),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				strs := []string{}
+
+				arg0 := args[0].AsValueSlice()
+
+				for _, arg := range arg0 {
+					strs = append(strs, arg.AsString())
+				}
+
+				return cty.StringVal(strings.Join(strs, args[1].AsString())), nil
+    	},
+		})
+
 	}
 
 	if p.ctx.Variables == nil {
@@ -222,12 +279,8 @@ func (p *Parser) DecodeSecrets() (map[string]string, error) {
 		secrets = *secretsStruct.Secrets
 	}
 
-	for _, secret := range secrets {
-		secretsMap[secret] = os.Getenv(secret)
-	}
-
-	if secretsStruct.Vault == nil || secretsStruct.Vault.Token == "" {
-		return secretsMap, setSecrets()
+	if secretsStruct.Vault == nil {
+		secretsStruct.Vault = &vault.Vault{}
 	}
 
 	err = secretsStruct.Vault.Init()
@@ -243,6 +296,20 @@ func (p *Parser) DecodeSecrets() (map[string]string, error) {
 	return secretsMap, setSecrets()
 }
 
+func (p *Parser) DecodeTemplates() ([]*job.Job, error) {
+	load := struct {
+		Templates []*job.Job `hcl:"template,block"`
+		Remain hcl.Body `hcl:",remain"`
+	}{}
+
+	if err := p.DecodeBody(&load); err != nil {
+		return nil, err
+	}
+
+	return load.Templates, nil
+}
+
+
 func (p *Parser) DecodeSCMs() ([]*scm.SCM, error) {
 	load := struct {
 		Repositories []*scm.SCM `hcl:"repository,block"`
@@ -256,17 +323,25 @@ func (p *Parser) DecodeSCMs() ([]*scm.SCM, error) {
 	return load.Repositories, nil
 }
 
-func (p *Parser) DecodeCache() (*types.CacheConfig, error) {
+func (p *Parser) DecodeCache() (types.CacheConfig, error) {
 	load := struct {
 		Cache *types.CacheConfig `hcl:"cache,block"`
 		Remain hcl.Body `hcl:",remain"`
 	}{}
 
 	if err := p.DecodeBody(&load); err != nil {
-		return nil, err
+		return types.CacheConfig{}, err
 	}
 
-	return load.Cache, nil
+	if load.Cache == nil {
+		load.Cache = &types.CacheConfig{}
+	}
+
+	if load.Cache.File == nil {
+		load.Cache.File = &filecache.FileCache{}
+	}
+
+	return *load.Cache, nil
 }
 
 func (p *Parser) DecodeKubernetes() (*kubernetes.Kubernetes, error) {
@@ -299,6 +374,7 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 	load := struct {
 		Jobs []struct {
 			Name string `hcl:"name,label"`
+			Deps *[]string `hcl:"deps"`
 			Remain hcl.Body `hcl:",remain"`
 		} `hcl:"job,block"`
 		Remain hcl.Body `hcl:",remain"`
@@ -317,6 +393,7 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 
 		j := &job.Job{
 			Name: partialJob.Name,
+			Deps: partialJob.Deps,
 		}
 
 		g.AddNode(j)
@@ -330,6 +407,10 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 			variables := attr.Expr.Variables()
 			for _, variable := range variables {
 				if variable.RootName() != "jobs" {
+					continue
+				}
+
+				if len(variable) < 2 {
 					continue
 				}
 
@@ -348,6 +429,8 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 	errors := g.IterSorted(func(node node.Node) (err error) {
 		job := node.(*job.Job)
 
+		fmt.Println(job.GetName())
+
 		if err := p.decodeJob(job, remains[job.GetName()], 0); err != nil {
 			return err
 		}
@@ -363,6 +446,10 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 }
 
 func (p *Parser) decodeJob(job *job.Job, body hcl.Body, depth int) error {
+	if job.Name == "repo" {
+		//spew.Dump(p.ctx.Variables["jobs"].AsValueMap())
+	}
+
 	decodeErr := p.Decode(body, job)
 
 	jobMap := map[string]cty.Value{}
@@ -418,6 +505,15 @@ func (p *Parser) DecodeConfig() (config types.Config, err error) {
 	}
 
 	if config.Jobs, err = p.DecodeJobs(); err != nil {
+		return
+	}
+
+	templates, err := p.DecodeTemplates()
+	if err != nil {
+		return
+	}
+
+	if err = config.RenderTemplates(templates); err != nil {
 		return
 	}
 

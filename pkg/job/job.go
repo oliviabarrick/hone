@@ -20,7 +20,7 @@ type Job struct {
 	Inputs  *[]string          `hcl:"inputs" json:"inputs"`
 	Outputs *[]string          `hcl:"outputs" json:"outputs"`
 	Env     *map[string]string `hcl:"env" json:"-"`
-	Deps    *[]string          `hcl:"deps" json:"deps"`
+	Deps    *[]string          `json:"deps"`
 	Engine  *string            `hcl:"engine" json:"engine" hash:"-"`
 	Condition *string          `hcl:"condition" json:"condition"`
 	Privileged *bool           `hcl:"privileged" json:"privileged"`
@@ -356,6 +356,10 @@ func (j *Job) ToCty() (cty.Value, error) {
 	}
 
 	if err := j.setMapStringList(objMap, "outputs", j.Outputs); err != nil {
+		return cty.NilVal, err
+	}
+
+	if err := j.setMapStringList(objMap, "deps", j.Deps); err != nil {
 		return cty.NilVal, err
 	}
 
