@@ -9,17 +9,18 @@ import (
 	"github.com/justinbarrick/hone/pkg/executors/docker"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/scm"
+	"github.com/justinbarrick/hone/pkg/graph/node"
 )
 
 type Config struct {
-	Env        map[string]interface{}
-	SCM        []*scm.SCM             `hcl:"report,block"`
-	Jobs       []*job.Job             `hcl:"job,block"`
-	Services   []*job.Job             `hcl:"service,block"`
-	Cache      *CacheConfig           `hcl:"cache,block"`
-	Kubernetes *kubernetes.Kubernetes `hcl:"kubernetes,block"`
+	Env          map[string]string
+	Secrets      map[string]string
+	SCM          []*scm.SCM
+	Jobs         []*job.Job
+	Cache        CacheConfig
+	Kubernetes   *kubernetes.Kubernetes
 	DockerConfig *docker.DockerConfig
-	Engine     *string                `hcl:"engine"`
+	Engine       *string
 }
 
 type CacheConfig struct {
@@ -31,13 +32,6 @@ func (c Config) Validate() error {
 	for _, job := range c.Jobs {
 		if err := job.Validate(c.GetEngine()); err != nil {
 			return errors.New(fmt.Sprintf("Error validating job %s: %s", job.GetName(), err))
-		}
-	}
-
-	for _, service := range c.Services {
-		service.Service = true
-		if err := service.Validate(c.GetEngine()); err != nil {
-			return errors.New(fmt.Sprintf("Error validating service %s: %s", service.GetName(), err))
 		}
 	}
 
@@ -69,23 +63,16 @@ func (c Config) GetEngine() string {
 	if c.Engine != nil {
 		return *c.Engine
 	}
+
 	return ""
 }
 
-func (c Config) GetJobs() []job.JobInt {
-	jobs := []job.JobInt{}
+func (c Config) GetNodes() []node.Node {
+	nodes := []node.Node{}
 
-	if c.Services != nil {
-		for _, service := range c.Services {
-			jobs = append(jobs, service)
-		}
+	for _, job := range c.Jobs {
+		nodes = append(nodes, job)
 	}
 
-	if c.Jobs != nil {
-		for _, job := range c.Jobs {
-			jobs = append(jobs, job)
-		}
-	}
-
-	return jobs
+	return nodes
 }

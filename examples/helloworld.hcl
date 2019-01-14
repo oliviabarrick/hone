@@ -29,7 +29,7 @@ job "build" {
     }
 
     inputs = ["./cmd/*/*.go", "./pkg/**/*.go", "go.mod", "go.sum"]
-    output = "hone"
+    outputs = ["hone"]
 
     shell = "go build -v -o ./hone ./cmd/hone"
 }

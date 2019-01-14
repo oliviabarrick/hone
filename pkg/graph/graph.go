@@ -3,7 +3,7 @@ package graph
 import (
 	"errors"
 	"fmt"
-	"github.com/justinbarrick/hone/pkg/job"
+	. "github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/utils"
 	"gonum.org/v1/gonum/graph"
@@ -12,68 +12,27 @@ import (
 	"sync"
 )
 
-type JobGraph struct {
+type Graph struct {
 	graph *simple.DirectedGraph
 }
 
-func ID(job job.JobInt) int64 {
-	return utils.Crc(job.GetName())
-}
-
-type Node struct {
-	Job  job.JobInt
-	Done chan bool
-	deps map[string]bool
-}
-
-func NewNode(job job.JobInt) *Node {
-	node := &Node{
-		Job:  job,
-		Done: make(chan bool),
-	}
-
-	for _, dep := range job.GetDeps() {
-		node.AddDep(dep)
-	}
-
-	return node
-}
-
-func (n Node) ID() int64 {
-	return ID(n.Job)
-}
-
-func (n *Node) AddDep(dep string) {
-	n.deps[dep] = true
-}
-
-func (n Node) GetDeps() []string {
-	deps := []string{}
-
-	for dep, _ := range n.deps {
-		deps = append(deps, dep)
-	}
-
-	return deps
-}
-
-func NewJobGraph(jobs []job.JobInt) JobGraph {
-	graph := JobGraph{
+func NewGraph(nodes []Node) Graph {
+	graph := Graph{
 		graph: simple.NewDirectedGraph(),
 	}
 
-	graph.BuildGraph(jobs)
+	graph.BuildGraph(nodes)
 	return graph
 }
 
-func (j *JobGraph) setEdges() error {
-	nodes := j.graph.Nodes()
+func (g *Graph) setEdges() error {
+	nodes := g.graph.Nodes()
 
-	for node := nodes.Node(); node != nil; node = nodes.Node() {
-		for _, dep := range node.(*Node).GetDeps() {
-			j.graph.SetEdge(simple.Edge{
+	for _, node := range graph.NodesOf(nodes) {
+		for _, dep := range node.(Node).GetDeps() {
+			g.graph.SetEdge(simple.Edge{
 				T: node,
-				F: j.graph.Node(utils.Crc(dep)),
+				F: g.graph.Node(utils.Crc(dep)),
 			})
 		}
 	}
@@ -81,114 +40,119 @@ func (j *JobGraph) setEdges() error {
 	return nil
 }
 
-func (j *JobGraph) AddDep(job job.JobInt, dep string) error {
-	node := j.graph.Node(ID(job))
+func (g *Graph) AddDep(targetNode Node, dep string) error {
+	node := g.graph.Node(ID(targetNode))
 	if node == nil {
-		return fmt.Errorf("Job not in graph.")
+		return fmt.Errorf("Node not in graph.")
 	}
 
-	node.(*Node).AddDep(dep)
+	node.(Node).AddDep(dep)
 	return nil
 }
 
-func (j *JobGraph) AddJob(job job.JobInt) {
-	j.graph.AddNode(NewNode(job))
+func (g *Graph) AddNode(node Node) {
+	g.graph.AddNode(node)
 }
 
-func (j *JobGraph) BuildGraph(jobs []job.JobInt) {
-	if jobs == nil {
+func (g *Graph) BuildGraph(nodes []Node) {
+	if nodes == nil {
 		return
 	}
 
-	for _, job := range jobs {
-		j.AddJob(job)
+	for _, node := range nodes {
+		g.AddNode(node)
 	}
 }
 
-func (j *JobGraph) WaitForDeps(n *Node, callback func(job.JobInt) error, servicesWg *sync.WaitGroup) func(job.JobInt) error {
-	return func(job job.JobInt) error {
-		defer close(n.Done)
+func (g *Graph) WaitForDeps(callback func(Node) error, servicesWg *sync.WaitGroup) func(Node) error {
+	return func(n Node) error {
+		defer close(n.GetDone())
 
 		failedDeps := []string{}
 
-		for _, node := range graph.NodesOf(j.graph.To(n.ID())) {
-			d := node.(*Node)
-			_ = <-d.Done
-			if d.Job.GetError() != nil {
-				failedDeps = append(failedDeps, d.Job.GetName())
+		for _, node := range graph.NodesOf(g.graph.To(n.ID())) {
+			d := node.(Node)
+			_ = <-d.GetDone()
+			if d.GetError() != nil {
+				failedDeps = append(failedDeps, d.GetName())
 			}
 		}
 
 		if len(failedDeps) > 0 {
-			n.Job.SetError(errors.New(fmt.Sprintf("Failed dependencies: %s", failedDeps)))
-			logger.LogError(job, n.Job.GetError().Error())
+			n.SetError(fmt.Errorf("Failed dependencies: %s", failedDeps))
+			logger.LogError(n, n.GetError().Error())
 		}
 
-		if n.Job.GetError() != nil {
-			return n.Job.GetError()
+		if n.GetError() != nil {
+			return n.GetError()
 		}
 
 		servicesWg.Add(1)
 		detach := make(chan bool)
-		job.SetDetach(detach)
+		n.SetDetach(detach)
 
 		go func() {
 			defer close(detach)
 			defer servicesWg.Done()
-			n.Job.SetError(callback(job))
+			n.SetError(callback(n))
 		}()
 
 		_ = <-detach
 
-		return n.Job.GetError()
+		return n.GetError()
 	}
 }
 
-func (j *JobGraph) IterTarget(target string, callback func(*Node) error) []error {
-	targetId := utils.Crc(target)
-	targetNode := j.graph.Node(targetId)
-	if targetNode == nil {
-		return []error{errors.New(fmt.Sprintf("Target %s not found.", target))}
-	}
+func (g *Graph) IterSorted(callback func(Node) error) []error {
+	g.setEdges()
 
-	j.setEdges()
-
-	sorted, err := topo.Sort(j.graph)
+	sorted, err := topo.Sort(g.graph)
 	if err != nil {
 		return []error{err}
 	}
 
 	errors := []error{}
 	for _, node := range sorted {
-		if !topo.PathExistsIn(j.graph, node, targetNode) {
-			continue
-		}
-
-		err := callback(node.(*Node))
+		err := callback(node.(Node))
 		if err != nil {
 			errors = append(errors, err)
 		}
 	}
-
 	return errors
 }
 
-func (j *JobGraph) ResolveTarget(target string, callback func(job.JobInt) error) []error {
+func (g *Graph) IterTarget(target string, callback func(Node) error) []error {
+	targetId := utils.Crc(target)
+	targetNode := g.graph.Node(targetId)
+	if targetNode == nil {
+		return []error{errors.New(fmt.Sprintf("Target %s not found.", target))}
+	}
+
+	return g.IterSorted(func(node Node) error {
+		if !topo.PathExistsIn(g.graph, g.graph.Node(node.ID()), targetNode) {
+			return nil
+		}
+
+		return callback(node)
+	})
+}
+
+func (g *Graph) ResolveTarget(target string, callback func(Node) error) []error {
 	stopCh := make(chan bool)
 
 	var wg sync.WaitGroup
 	var servicesWg sync.WaitGroup
 
+	callback = g.WaitForDeps(callback, &servicesWg)
 	errors := []error{}
 
-	iterErrors := j.IterTarget(target, func(node *Node) error {
+	iterErrors := g.IterTarget(target, func(node Node) error {
 		wg.Add(1)
 
-		go func(n *Node) {
+		go func(n Node) {
 			defer wg.Done()
-			cb := j.WaitForDeps(n, callback, &servicesWg)
-			n.Job.SetStop(stopCh)
-			err := cb(n.Job)
+			n.SetStop(stopCh)
+			err := callback(n)
 			if err != nil {
 				errors = append(errors, err)
 			}
@@ -205,22 +169,22 @@ func (j *JobGraph) ResolveTarget(target string, callback func(job.JobInt) error)
 	return errors
 }
 
-func (j *JobGraph) LongestTarget(target string) (int, []error) {
-	longestJob := 0
+func (g *Graph) LongestTarget(target string) (int, []error) {
+	longestName := 0
 	lock := sync.Mutex{}
 
-	errors := j.IterTarget(target, func(n *Node) error {
+	errors := g.IterTarget(target, func(n Node) error {
 		lock.Lock()
 
-		name := n.Job.GetName()
+		name := n.GetName()
 
-		if len(name) > longestJob {
-			longestJob = len(name)
+		if len(name) > longestName {
+			longestName = len(name)
 		}
 
 		lock.Unlock()
 		return nil
 	})
 
-	return longestJob, errors
+	return longestName, errors
 }

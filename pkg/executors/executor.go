@@ -77,7 +77,7 @@ func Run(config *types.Config, j *job.Job) error {
 		return err
 	}
 
-	if j.Service {
+	if j.IsService() {
 		j.Detach <- true
 	}
 

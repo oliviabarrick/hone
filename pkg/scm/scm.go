@@ -196,7 +196,7 @@ func (s SCM) BuildCanceled(reportUrl string) error {
 	return s.PostStatus(StateCanceled, s.commit, "Build cancelled by user!", reportUrl)
 }
 
-func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
+func InitSCMs(scms []*SCM, env map[string]string) ([]*SCM, error) {
 	finalScms := []*SCM{}
 
 	// TODO: Status() doesn't ignore gitignore: https://github.com/src-d/go-git/issues/844
@@ -215,8 +215,13 @@ func InitSCMs(scms []*SCM, env map[string]interface{}) ([]*SCM, error) {
 	}
 	*/
 
+	envMap := map[string]interface{}{}
+	for key, val := range env {
+		envMap[key] = val
+	}
+
 	for _, scm := range scms {
-		run, err := events.YQLMatch(scm.Condition, env)
+		run, err := events.YQLMatch(scm.Condition, envMap)
 		if err != nil {
 			return finalScms, err
 		}

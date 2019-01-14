@@ -114,7 +114,7 @@ func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
 	logger.Log(j, fmt.Sprintf("Container exited with status: %d", statusCode))
 	if statusCode != 128 && statusCode != 0 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
-	} else if ! j.Service && statusCode == 128 {
+	} else if ! j.IsService() && statusCode == 128 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
 	}
 
