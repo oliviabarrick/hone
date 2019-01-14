@@ -80,6 +80,32 @@ Settings:
 * `engine`: An execution engine to use, defaults to docker or the global engine setting.
 * `template`: the name of a Job template to use (see the section below on templates).
 * `privileged`: if true, the container will be started in privileged mode.
+* `service`: if true, the container will be started as a service, see [the section on Services](#Service).
+
+When defining a job, a job's settings can be referenced in the context of another job:
+
+```
+job "build" {
+    image = "golang:1.11.2"
+
+    inputs = ["./cmd/", "./pkg/"]
+    outputs = ["./bin"]
+
+    shell = "go build ./bin ./cmd/"
+}
+
+job "release" {
+    image = "alpine"
+
+    inputs = jobs.build.outputs
+    outputs = ["releases/"]
+
+    shell = "mkdir releases/ && cp ${jobs.release.inputs[0]} releases/"
+}
+```
+
+A reference to another job will create an implicit dependency between the two jobs. It is also
+possible to reference settings from the current job, as seen above.
 
 # Execution engine
 
@@ -122,17 +148,17 @@ env = [
     "ENGINE=docker"
 ]
 
-engine = ${environ.ENGINE}
+engine = ${env.ENGINE}
 ```
 
 ## Built-in variables
 
 There are also some built-in variables:
 
-* `environ.GIT_TAG`: the tag present on this commit
-* `environ.GIT_BRANCH`: the branch that is checked out
-* `environ.GIT_COMMIT`: the current commit id.
-* `environ.GIT_COMMIT_SHORT`: an eight character short commit id.
+* `env.GIT_TAG`: the tag present on this commit
+* `env.GIT_BRANCH`: the branch that is checked out
+* `env.GIT_COMMIT`: the current commit id.
+* `env.GIT_COMMIT_SHORT`: an eight character short commit id.
 
 ## Conditions
 
@@ -188,12 +214,12 @@ cache {
 
 Secrets can be stored in Vault instead of being passed as environment variables. Secrets are first
 loaded from environment variables and then written into Vault if they don't already exist. Secrets
-are then exposed to the rest of the hone configuration as environment variables and can be used
+are then exposed to the rest of the hone configuration in the `secrets` map and can be used
 in most blocks, for example secrets can configure your cache:
 
 ```
 # optional, namespace your vault secrets.
-workspace = "${environ.WORKSPACE}"
+workspace = "${env.WORKSPACE}"
 
 secrets = [
     "S3_ACCESS_KEY", "S3_SECRET_KEY"
@@ -205,15 +231,15 @@ env = [
 
 vault {
     address = "http://127.0.0.1:8200"
-    token = "${environ.VAULT_TOKEN}"
+    token = "${env.VAULT_TOKEN}"
 }
 
 cache {
     s3 {
         bucket = "mybucket"
         endpoint = "nyc3.digitaloceanspaces.com"
-        access_key = "${environ.S3_ACCESS_KEY}"
-        secret_key = "${environ.S3_SECRET_KEY}"
+        access_key = "${secrets.S3_ACCESS_KEY}"
+        secret_key = "${secrets.S3_SECRET_KEY}"
     }
 }
 
@@ -252,6 +278,22 @@ Environments can optionally be defined via the `workspace` setting, which will u
 a different namespace for storing secrets (allowing you to easily switch between a
 development and prod namespace).
 
+## Secrets format
+
+Secrets can be specified as a name only, in which case they will be searched for in vault
+or environment variables:
+
+```
+secrets = [ "S3_ACCESS_KEY" ]
+```
+
+You can also specify a default value for the secret if it is not set. This is useful for default
+dev credentials or if a secret is optional (e.g., the s3 keys for cache):
+
+```
+secrets = ["S3_ENDPOINT=sfo2.digitaloceanspaces.com", "S3_ACCESS_KEY=", "S3_SECRET_KEY="]
+```
+
 # Building Docker images
 
 Kaniko is recommended for building Docker images, a custom Kaniko shim has been built
@@ -268,11 +310,11 @@ job "docker-build" {
     image = "justinbarrick/kaniko:latest"
 
     env = {
-        "DOCKER_USER" = "${environ.DOCKER_USER}",
-        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
+        "DOCKER_USER" = "${env.DOCKER_USER}",
+        "DOCKER_PASS" = "${env.DOCKER_PASS}",
     }
 
-    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${environ.DOCKER_USER}/image:latest"
+    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${env.DOCKER_USER}/image:latest"
 }
 ```
 
@@ -297,11 +339,11 @@ template "docker" {
     image = "justinbarrick/kaniko:latest"
 
     env = {
-        "DOCKER_USER" = "${environ.DOCKER_USER}",
-        "DOCKER_PASS" = "${environ.DOCKER_PASS}",
+        "DOCKER_USER" = "${env.DOCKER_USER}",
+        "DOCKER_PASS" = "${env.DOCKER_PASS}",
     }
 
-    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${environ.DOCKER_USER}/image:latest"
+    shell = "kaniko --dockerfile=Dockerfile --context=/build/ --destination=${env.DOCKER_USER}/image:latest"
 }
 
 # Default template
@@ -341,7 +383,7 @@ job "curl" {
 Nginx would be started, curl would run, and then nginx would be torn down at the end
 of the build.
 
-# Reporting
+# Reporting to a Git repository
 
 It is possible to report build status back to your Git provider. Hone has built in support
 for a number of Git providers:
@@ -353,11 +395,11 @@ for a number of Git providers:
 * Bitbucket
 * Stash
 
-Your provider can be configured with a `report` block, note that you can supply as many report blocks
+Your provider can be configured with a `repository` block, note that you can supply as many report blocks
 as required:
 
 ```
-report {
+repository {
     token = "github token"
 }
 ```

@@ -1,16 +1,16 @@
 secrets = [
     "S3_BUCKET=codesink-cache",
     "S3_ENDPOINT=sfo2.digitaloceanspaces.com",
-    "S3_ACCESS_KEY",
-    "S3_SECRET_KEY",
-    "DOCKER_USER",
-    "DOCKER_PASS",
-    "GITHUB_TOKEN"
+    "S3_ENABLED=false",
+    "S3_ACCESS_KEY=",
+    "S3_SECRET_KEY=",
+    "DOCKER_USER=",
+    "DOCKER_PASS=",
+    "GITHUB_TOKEN="
 ]
 
 env = [
     "ENGINE=docker",
-    "S3_ENABLED=false",
     "WORKSPACE=dev",
     "VAULT_ADDR=https://vault.codesink.net/",
     "VAULT_TOKEN",
@@ -34,7 +34,7 @@ cache {
         secret_key = "${secrets.S3_SECRET_KEY}"
         endpoint = "${secrets.S3_ENDPOINT}"
         bucket = "${secrets.S3_BUCKET}"
-        disabled = "${env.S3_ENABLED != "true"}"
+        disabled = "${secrets.S3_ENABLED != "true"}"
     }
 }
 

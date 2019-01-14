@@ -69,7 +69,7 @@ func (v *Vault) LoadSecrets(workspace string, secrets []string) (map[string]stri
 		if secretValue != "" {
 			secretMap[secret] = secretValue
 		}
-		if secretMap[secret] == "" {
+		if secretMap[secret] == "" && len(secretSplit) == 1 {
 			return nil, errors.New(fmt.Sprintf("Failed to load secret %s from vault or environment.", secret))
 		}
 	}
