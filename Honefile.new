@@ -38,7 +38,7 @@ cache {
     }
 }
 
-report {
+repository {
     token = "${secrets.GITHUB_TOKEN}"
 }
 

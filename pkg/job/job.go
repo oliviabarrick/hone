@@ -20,12 +20,13 @@ type Job struct {
 	Inputs  *[]string          `hcl:"inputs" json:"inputs"`
 	Outputs *[]string          `hcl:"outputs" json:"outputs"`
 	Env     *map[string]string `hcl:"env" json:"-"`
-	Deps    *[]string          `json:"deps"`
+	Deps    *[]string          `hcl:"deps" json:"deps"`
+	deps    []string
 	Engine  *string            `hcl:"engine" json:"engine" hash:"-"`
 	Condition *string          `hcl:"condition" json:"condition"`
 	Privileged *bool           `hcl:"privileged" json:"privileged"`
 	Workdir *string            `hcl:"workdir" json:"workdir"`
-	Service bool               `hash:"-" json:"service"`
+	Service *bool              `hcl:"service" json:"service" hash:"-"`
 	Cached  bool               `hash:"-" json:"cached"`
 	Hash         string        `hash:"-" json:"hash"`
 	OutputHashes map[string]string      `hash:"-" json:"outputHashes"`
@@ -60,9 +61,7 @@ func (j *Job) Default(def Job) {
 		j.Engine = def.Engine
 	}
 
-	if j.Deps == nil {
-		j.Deps = def.Deps
-	}
+	j.deps = append(j.deps, def.GetDeps()...)
 
 	if def.Env != nil {
 		if j.Env == nil {
@@ -197,11 +196,28 @@ func (j *Job) SetDetach(detachCh chan bool) {
 }
 
 func (j Job) GetDeps() []string {
-	if j.Deps == nil {
-		return []string{}
+	hclDeps := []string{}
+
+	if j.Deps != nil {
+		hclDeps = *j.Deps
 	}
 
-	return *j.Deps
+	allDeps := map[string]bool{}
+
+	for _, dep := range hclDeps {
+		allDeps[dep] = true
+	}
+
+	for _, dep := range j.deps {
+		allDeps[dep] = true
+	}
+
+	strDeps := []string{}
+	for key, _ := range allDeps {
+		strDeps = append(strDeps, key)
+	}
+
+	return strDeps
 }
 
 func (j *Job) AddDep(dep string) {
@@ -209,17 +225,13 @@ func (j *Job) AddDep(dep string) {
 		return
 	}
 
-	if j.Deps == nil {
-		j.Deps = &[]string{}
-	}
-
-	for _, oldDep := range *j.Deps {
+	for _, oldDep := range j.deps {
 		if oldDep == dep {
 			return
 		}
 	}
 
-	*j.Deps = append(*j.Deps, dep)
+	j.deps = append(j.deps, dep)
 }
 
 func (j Job) IsPrivileged() bool {
@@ -231,11 +243,6 @@ func (j Job) IsPrivileged() bool {
 }
 
 func (j Job) MarshalJSON() ([]byte, error) {
-	deps := []string{}
-	if j.Deps != nil {
-		deps = *j.Deps
-	}
-
 	condition := ""
 	if j.Condition != nil {
 		condition = *j.Condition
@@ -273,17 +280,25 @@ func (j Job) MarshalJSON() ([]byte, error) {
 		Shell: j.GetShell(),
 		Inputs: j.GetInputs(),
 		Outputs: j.GetOutputs(),
-		Deps: deps,
+		Deps: j.GetDeps(),
 		Engine: j.GetEngine(),
 		Condition: condition,
 		Privileged: privileged,
-		Service: j.Service,
+		Service: j.IsService(),
 		Successful: (j.Error == nil),
 		Error: errMsg,
 		Cached: j.Cached,
 		Hash: j.Hash,
 		OutputHashes: j.OutputHashes,
 	})
+}
+
+func (j *Job) IsService() bool {
+	if j.Service == nil {
+		return false
+	}
+
+	return *j.Service
 }
 
 func (j *Job) ID() int64 {
@@ -359,7 +374,8 @@ func (j *Job) ToCty() (cty.Value, error) {
 		return cty.NilVal, err
 	}
 
-	if err := j.setMapStringList(objMap, "deps", j.Deps); err != nil {
+	deps := j.GetDeps()
+	if err := j.setMapStringList(objMap, "deps", &deps); err != nil {
 		return cty.NilVal, err
 	}
 

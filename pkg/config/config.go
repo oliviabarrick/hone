@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +21,6 @@ import (
 	"github.com/zclconf/go-cty/cty/gocty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
-//	"github.com/davecgh/go-spew/spew"
 )
 
 type Remains interface {
@@ -393,7 +391,12 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 
 		j := &job.Job{
 			Name: partialJob.Name,
-			Deps: partialJob.Deps,
+		}
+
+		if partialJob.Deps != nil {
+			for _, dep := range *partialJob.Deps {
+				j.AddDep(dep)
+			}
 		}
 
 		g.AddNode(j)
@@ -429,8 +432,6 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 	errors := g.IterSorted(func(node node.Node) (err error) {
 		job := node.(*job.Job)
 
-		fmt.Println(job.GetName())
-
 		if err := p.decodeJob(job, remains[job.GetName()], 0); err != nil {
 			return err
 		}
@@ -446,10 +447,6 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 }
 
 func (p *Parser) decodeJob(job *job.Job, body hcl.Body, depth int) error {
-	if job.Name == "repo" {
-		//spew.Dump(p.ctx.Variables["jobs"].AsValueMap())
-	}
-
 	decodeErr := p.Decode(body, job)
 
 	jobMap := map[string]cty.Value{}

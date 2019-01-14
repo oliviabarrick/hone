@@ -147,7 +147,7 @@ func (c CacheEntry) SyncAttrs() error {
 
 func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error {
 	return func(job *config.Job) error {
-		if job.Service {
+		if job.IsService() {
 			return callback(job)
 		}
 
