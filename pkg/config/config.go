@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -168,6 +169,27 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 				return cty.StringVal(strings.Join(strs, args[1].AsString())), nil
     	},
 		})
+		p.ctx.Functions["split"] = function.New(&function.Spec{
+			Params: []function.Parameter{
+				{
+					Name:             "str",
+					Type:             cty.String,
+				},
+				{
+					Name:             "sep",
+					Type:             cty.String,
+				},
+			},
+			Type: function.StaticReturnType(cty.List(cty.String)),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				str := args[0].AsString()
+				sep := args[1].AsString()
+
+				split := strings.Split(str, sep)
+
+				return gocty.ToCtyValue(split, cty.List(cty.String))
+    	},
+		})
 
 	}
 
@@ -294,9 +316,15 @@ func (p *Parser) DecodeSecrets() (map[string]string, error) {
 	return secretsMap, setSecrets()
 }
 
-func (p *Parser) DecodeTemplates() ([]*job.Job, error) {
+type JobPartial struct {
+	Name string     `hcl:"name,label"`
+	Deps *[]string `hcl:"deps"`
+	Remain hcl.Body `hcl:",remain"`
+}
+
+func (p *Parser) DecodeTemplates() ([]JobPartial, error) {
 	load := struct {
-		Templates []*job.Job `hcl:"template,block"`
+		Templates []JobPartial `hcl:"template,block"`
 		Remain hcl.Body `hcl:",remain"`
 	}{}
 
@@ -368,13 +396,25 @@ func (p *Parser) DecodeEngine() (*string, error) {
 	return load.Engine, nil
 }
 
-func (p *Parser) DecodeJobs() ([]*job.Job, error) {
+func (p *Parser) templateForJob(job *job.Job, templates []JobPartial, jobIsTemplate bool) (*JobPartial, error) {
+	for _, template := range templates {
+		if job.Template != nil && *job.Template == template.Name {
+			return &template, nil
+		} else if job.Template == nil && template.Name == "default" && ! jobIsTemplate {
+			return &template, nil
+		}
+	}
+
+	if job.Template == nil {
+		return nil, nil
+	}
+
+	return nil, fmt.Errorf("Template '%s' not found.", *job.Template)
+}
+
+func (p *Parser) DecodeJobs(templates []JobPartial) ([]*job.Job, error) {
 	load := struct {
-		Jobs []struct {
-			Name string `hcl:"name,label"`
-			Deps *[]string `hcl:"deps"`
-			Remain hcl.Body `hcl:",remain"`
-		} `hcl:"job,block"`
+		Jobs []JobPartial `hcl:"job,block"`
 		Remain hcl.Body `hcl:",remain"`
 	}{}
 
@@ -430,13 +470,13 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 	jobs := []*job.Job{}
 
 	errors := g.IterSorted(func(node node.Node) (err error) {
-		job := node.(*job.Job)
+		j := node.(*job.Job)
 
-		if err := p.decodeJob(job, remains[job.GetName()], 0); err != nil {
+		if err := p.decodeJob(j, remains[j.GetName()], 0, templates, false, nil); err != nil {
 			return err
 		}
 
-		jobs = append(jobs, job)
+		jobs = append(jobs, j)
 		return nil
 	})
 	if len(errors) > 0 {
@@ -446,31 +486,69 @@ func (p *Parser) DecodeJobs() ([]*job.Job, error) {
 	return jobs, nil
 }
 
-func (p *Parser) decodeJob(job *job.Job, body hcl.Body, depth int) error {
-	decodeErr := p.Decode(body, job)
-
+func (p *Parser) setJob(j *job.Job) error {
 	jobMap := map[string]cty.Value{}
 	if ! p.ctx.Variables["jobs"].IsNull() {
 		jobMap = p.ctx.Variables["jobs"].AsValueMap()
 	}
 
-	jobCty, err := job.ToCty()
+	jobCty, err := j.ToCty()
 	if err != nil {
 		return err
 	}
 
-	jobMap[job.Name] = jobCty
+	jobMap[j.Name] = jobCty
 	p.ctx.Variables["jobs"] = cty.MapVal(jobMap)
+	p.ctx.Variables["self"] = jobCty
+	return nil
+}
 
-	switch e := decodeErr.(type) {
-	case hcl.Diagnostics:
-		if depth > 20 {
-			return p.checkErrors(e)
-		} else {
-			return p.decodeJob(job, body, depth + 1)
-		}
-	default:
+func (p *Parser) decodeJob(j *job.Job, body hcl.Body, depth int, templates []JobPartial, jobIsTemplate bool, self *job.Job) error {
+	if self == nil {
+		self = j
+	}
+
+	if err := p.setJob(self); err != nil {
 		return err
+	}
+
+	decodeErr := p.Decode(body, j)
+	e, ok := decodeErr.(hcl.Diagnostics)
+	if ok != true {
+		return decodeErr
+	}
+
+	if err := p.setJob(self); err != nil {
+		return err
+	}
+
+	if depth > 20 {
+		return p.checkErrors(e)
+	}
+
+	template, err := p.templateForJob(j, templates, jobIsTemplate)
+	if err != nil {
+		return err
+	}
+
+	if template != nil {
+		templateJob := job.Job{
+			Name: self.GetName(),
+		}
+
+		if err := p.decodeJob(&templateJob, template.Remain, depth + 1, templates, true, self); err != nil {
+			return err
+		}
+
+		j.Default(templateJob)
+	}
+
+	if err := p.setJob(self); err != nil {
+		return err
+	}
+
+	if e.HasErrors() {
+		return p.decodeJob(j, body, depth + 1, templates, jobIsTemplate, self)
 	}
 
 	return nil
@@ -501,18 +579,20 @@ func (p *Parser) DecodeConfig() (config types.Config, err error) {
 		return
 	}
 
-	if config.Jobs, err = p.DecodeJobs(); err != nil {
-		return
-	}
-
 	templates, err := p.DecodeTemplates()
 	if err != nil {
 		return
 	}
 
+	if config.Jobs, err = p.DecodeJobs(templates); err != nil {
+		return
+	}
+
+/*
 	if err = config.RenderTemplates(templates); err != nil {
 		return
 	}
+*/
 
 	return
 }

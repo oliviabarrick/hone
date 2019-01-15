@@ -4,7 +4,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"os"
+	"sort"
 )
+
+func sorted(toSort []string) []string {
+	sort.Strings(toSort)
+	return toSort
+}
 
 func TestConfig(t *testing.T) {
 	example := `
@@ -25,7 +31,7 @@ job "world" {
 	err := parser.Parse(example)
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(jobs))
 
@@ -68,7 +74,7 @@ job "world" {
 	err := parser.Parse(example)
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(jobs))
 
@@ -96,7 +102,7 @@ job "world" {
 	assert.Equal(t, []string{"/bin/sh", "-cex", "echo world"}, jobs[2].GetShell())
 	assert.Equal(t, []string{"hello", "hi"}, jobs[2].GetInputs())
 	assert.Equal(t, []string{}, jobs[2].GetOutputs())
-	assert.Equal(t, []string{"hello", "moon"}, jobs[2].GetDeps())
+	assert.Equal(t, []string{"hello", "moon"}, sorted(jobs[2].GetDeps()))
 }
 
 func TestConfigSelfReferential(t *testing.T) {
@@ -112,7 +118,7 @@ job "moon" {
 	err := parser.Parse(example)
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(jobs))
 
@@ -131,7 +137,7 @@ job "moon" {
 	err := parser.Parse(example)
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.NotNil(t, err)
 	assert.Equal(t, 0, len(jobs))
 }
@@ -149,7 +155,7 @@ job "moon" {
 	err := parser.Parse(example)
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(jobs))
 
@@ -163,9 +169,9 @@ func TestConfigSelfReferentialEnv(t *testing.T) {
 job "moon" {
 	image = "debian:stretch"
 	outputs = ["${jobs.moon.env.HELLO}"]
-    env = {
-        "HELLO" = "${jobs.moon.image}"
-    }
+	env = {
+		"HELLO" = "${jobs.moon.image}"
+	}
 	shell = "echo hi > ${jobs.moon.outputs[0]}"
 }
 `
@@ -174,7 +180,7 @@ job "moon" {
 	err := parser.Parse(example)
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(jobs))
 
@@ -226,7 +232,7 @@ job "test" {
 	_, err = parser.DecodeEnv()
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.Nil(t, err)
 	assert.Equal(t, len(jobs), 1)
 	assert.Equal(t, jobs[0].GetEnv()["HELLO"], "hello")
@@ -275,7 +281,7 @@ job "test" {
 	_, err = parser.DecodeSecrets()
 	assert.Nil(t, err)
 
-	jobs, err := parser.DecodeJobs()
+	jobs, err := parser.DecodeJobs([]JobPartial{})
 	assert.Nil(t, err)
 	assert.Equal(t, len(jobs), 1)
 	assert.Equal(t, jobs[0].GetEnv()["HELLO"], "hello")
@@ -302,4 +308,175 @@ job "test" {
 	config, err := parser.DecodeConfig()
 	assert.Nil(t, err)
 	assert.Equal(t, len(config.Jobs), 1)
+}
+
+func TestConfigTemplate(t *testing.T) {
+	example := `
+template "hello" {
+	image = "debian:stretch"
+}
+
+job "moon" {
+	template = "hello"
+	shell = "echo hello"
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(jobs))
+
+	assert.Equal(t, "moon", jobs[0].GetName())
+	assert.Equal(t, "debian:stretch", jobs[0].GetImage())
+	assert.Equal(t, []string{"/bin/sh", "-cex", "echo hello"}, jobs[0].GetShell())
+}
+
+func TestConfigTemplateNested(t *testing.T) {
+	example := `
+template "other" {
+	image = "debian:jessie"
+	inputs = ["lol"]
+}
+
+template "hello" {
+	image = "debian:stretch"
+	template = "other"
+}
+
+job "moon" {
+	template = "hello"
+	shell = "echo hello"
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(jobs))
+
+	assert.Equal(t, "moon", jobs[0].GetName())
+	assert.Equal(t, "debian:stretch", jobs[0].GetImage())
+	assert.Equal(t, []string{"/bin/sh", "-cex", "echo hello"}, jobs[0].GetShell())
+	assert.Equal(t, []string{"lol"}, jobs[0].GetInputs())
+}
+
+func TestConfigTemplateSelf(t *testing.T) {
+	example := `
+template "hello" {
+	inputs = [format("%s-%s.pkg.tar.xz", self.name, self.env.VERSION)]
+}
+
+job "moon" {
+	template = "hello"
+
+	env = {
+		"VERSION" = "1234"
+	}
+
+	shell = "cat ${self.inputs[0]}"
+}
+
+job "world" {
+	template = "hello"
+
+	deps = ["moon"]
+
+	env = {
+		"VERSION" = "9876"
+	}
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(jobs))
+
+	assert.Equal(t, "moon", jobs[0].GetName())
+	assert.Equal(t, []string{"moon-1234.pkg.tar.xz"}, jobs[0].GetInputs())
+	assert.Equal(t, []string{"/bin/sh", "-cex", "cat moon-1234.pkg.tar.xz"}, jobs[0].GetShell())
+
+	assert.Equal(t, "world", jobs[1].GetName())
+	assert.Equal(t, []string{"world-9876.pkg.tar.xz"}, jobs[1].GetInputs())
+}
+
+func TestConfigTemplateDefault(t *testing.T) {
+	example := `
+template "default" {
+	image = "debian:stretch"
+}
+
+job "moon" {
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(jobs))
+
+	assert.Equal(t, "moon", jobs[0].GetName())
+	assert.Equal(t, "debian:stretch", jobs[0].GetImage())
+}
+
+func TestConfigTemplateImplicitDepend(t *testing.T) {
+	example := `
+template "hello" {
+	outputs = [self.name]
+}
+
+job "world" {
+	template = "hello"
+}
+
+job "other" {
+	deps = ["world"]
+
+	inputs = [
+		for dep in jobs.other.deps: jobs[dep].outputs[0]
+	]
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(jobs))
+
+	assert.Equal(t, "world", jobs[0].GetName())
+	assert.Equal(t, []string{"world"}, jobs[0].GetOutputs())
+
+	assert.Equal(t, "other", jobs[1].GetName())
+	assert.Equal(t, []string{"world"}, jobs[1].GetInputs())
 }

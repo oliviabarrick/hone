@@ -61,6 +61,10 @@ func (j *Job) Default(def Job) {
 		j.Engine = def.Engine
 	}
 
+	if j.Workdir == nil {
+		j.Workdir = def.Workdir
+	}
+
 	j.deps = append(j.deps, def.GetDeps()...)
 
 	if def.Env != nil {
@@ -309,7 +313,7 @@ func (j Job) setMapBool(objMap map[string]cty.Value, key string, value *bool) {
 	if value != nil {
 		objMap[key] = cty.BoolVal(*value)
 	} else {
-		objMap[key] = cty.BoolVal(false)
+		objMap[key] = cty.NullVal(cty.Bool)
 	}
 }
 
@@ -317,7 +321,7 @@ func (j Job) setMapString(objMap map[string]cty.Value, key string, value *string
 	if value != nil {
 		objMap[key] = cty.StringVal(*value)
 	} else {
-		objMap[key] = cty.StringVal("")
+		objMap[key] = cty.NullVal(cty.String)
 	}
 }
 
@@ -329,7 +333,7 @@ func (j Job) setMapStringList(objMap map[string]cty.Value, key string, value *[]
 		}
 		objMap[key] = valueEncoded
 	} else {
-		objMap[key] = cty.ListValEmpty(cty.String)
+		objMap[key] = cty.NullVal(cty.List(cty.String))
 	}
 
 	return nil
@@ -343,7 +347,7 @@ func (j Job) setMapStringMap(objMap map[string]cty.Value, key string, value *map
 		}
 		objMap[key] = valueEncoded
 	} else {
-		objMap[key] = cty.MapValEmpty(cty.String)
+		objMap[key] = cty.NullVal(cty.Map(cty.String))
 	}
 
 	return nil
