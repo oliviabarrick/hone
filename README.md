@@ -30,7 +30,7 @@ hone examples/helloworld.hcl build
 
 # Configuration
 
-With no argumentsn, hone loads the configuration from `Honefile` in the local directory and the
+With no arguments, hone loads the configuration from `Honefile` in the local directory and the
 `all` target.
 
 A single argument to hone specifies which target to use:
