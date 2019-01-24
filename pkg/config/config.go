@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sort"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
 	"github.com/hashicorp/hcl2/gohcl"
@@ -188,9 +189,30 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 				split := strings.Split(str, sep)
 
 				return gocty.ToCtyValue(split, cty.List(cty.String))
-    	},
+			},
 		})
+		p.ctx.Functions["sorted"] = function.New(&function.Spec{
+			Params: []function.Parameter{
+				{
+					Name:             "strs",
+					Type:             cty.List(cty.String),
+				},
+			},
+			Type: function.StaticReturnType(cty.List(cty.String)),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				strs := []string{}
 
+				arg0 := args[0].AsValueSlice()
+
+				for _, arg := range arg0 {
+					strs = append(strs, arg.AsString())
+				}
+
+				sort.Strings(strs)
+
+				return gocty.ToCtyValue(strs, cty.List(cty.String))
+			},
+		})
 	}
 
 	if p.ctx.Variables == nil {
