@@ -8,20 +8,39 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 )
+
+type StringSet []string
+
+func (s StringSet) Strings() []string {
+	stringMap := map[string]bool{}
+
+	for _, str := range s {
+		stringMap[str] = true
+	}
+
+	set := []string{}
+
+	for key, _ := range stringMap {
+		set = append(set, key)
+	}
+
+	sort.Strings(set)
+	return set
+}
 
 type Job struct {
 	Name    string             `hcl:"name,label" json:"name"`
 	Template *string `hcl:"template" hash:"-" json:"-"`
 	Image   *string            `hcl:"image" json:"image"`
 	Shell   *string            `hcl:"shell" json:"shell"`
-	Exec    *[]string          `hcl:"exec" json:"exec"`
-	Inputs  *[]string          `hcl:"inputs" json:"inputs"`
-	Outputs *[]string          `hcl:"outputs" json:"outputs"`
+	Exec    *StringSet         `hcl:"exec" json:"exec" hash:"method:Strings"`
+	Inputs  *StringSet         `hcl:"inputs" json:"inputs" hash:"method:Strings"`
+	Outputs *StringSet         `hcl:"outputs" json:"outputs" hash:"method:Strings"`
 	Env     *map[string]string `hcl:"env" json:"-"`
-	Deps    *[]string          `hcl:"deps" json:"deps"`
-	deps    []string
+	Deps    *StringSet         `hcl:"deps" json:"deps" hash:"method:Strings"`
 	Engine  *string            `hcl:"engine" json:"engine" hash:"-"`
 	Condition *string          `hcl:"condition" json:"condition"`
 	Privileged *bool           `hcl:"privileged" json:"privileged"`
@@ -202,28 +221,11 @@ func (j *Job) SetDetach(detachCh chan bool) {
 }
 
 func (j Job) GetDeps() []string {
-	hclDeps := []string{}
-
-	if j.Deps != nil {
-		hclDeps = *j.Deps
+	if j.Deps == nil {
+		return []string{}
 	}
 
-	allDeps := map[string]bool{}
-
-	for _, dep := range hclDeps {
-		allDeps[dep] = true
-	}
-
-	for _, dep := range j.deps {
-		allDeps[dep] = true
-	}
-
-	strDeps := []string{}
-	for key, _ := range allDeps {
-		strDeps = append(strDeps, key)
-	}
-
-	return strDeps
+	return j.Deps.Strings()
 }
 
 func (j *Job) AddDep(dep string) {
@@ -231,13 +233,11 @@ func (j *Job) AddDep(dep string) {
 		return
 	}
 
-	for _, oldDep := range j.deps {
-		if oldDep == dep {
-			return
-		}
+	if j.Deps == nil {
+		j.Deps = &StringSet{}
 	}
 
-	j.deps = append(j.deps, dep)
+	*j.Deps = append(*j.Deps, dep)
 }
 
 func (j Job) IsPrivileged() bool {
@@ -327,9 +327,9 @@ func (j Job) setMapString(objMap map[string]cty.Value, key string, value *string
 	}
 }
 
-func (j Job) setMapStringList(objMap map[string]cty.Value, key string, value *[]string) error {
+func (j Job) setMapStringList(objMap map[string]cty.Value, key string, value *StringSet) error {
 	if value != nil {
-		valueEncoded, err := gocty.ToCtyValue(value, cty.List(cty.String))
+		valueEncoded, err := gocty.ToCtyValue(value.Strings(), cty.List(cty.String))
 		if err != nil {
 			return err
 		}
@@ -380,8 +380,7 @@ func (j *Job) ToCty() (cty.Value, error) {
 		return cty.NilVal, err
 	}
 
-	deps := j.GetDeps()
-	if err := j.setMapStringList(objMap, "deps", &deps); err != nil {
+	if err := j.setMapStringList(objMap, "deps", j.Deps); err != nil {
 		return cty.NilVal, err
 	}
 

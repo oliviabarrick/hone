@@ -1,5 +1,7 @@
 module github.com/justinbarrick/hone
 
+replace github.com/cnf/structhash => github.com/justinbarrick/structhash v0.0.1
+
 require (
 	github.com/antlr/antlr4 v0.0.0-20181130174051-b3f00ca72aaa // indirect
 	github.com/apex/log v1.1.0
