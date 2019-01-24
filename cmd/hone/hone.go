@@ -75,9 +75,10 @@ func main() {
 
 	var logWriter io.WriteCloser
 
-	if config.Cache.S3 != nil && !config.Cache.S3.Disabled {
+	if config.Cache.S3 != nil && config.Cache.S3.Enabled() {
 		if err = config.Cache.S3.Init(); err != nil {
 			logger.Errorf("Error initializing S3: %s", err)
+			report.SetCache(nil)
 			report.Exit(err)
 		}
 		callback = cache.CacheJob(config.Cache.S3, callback)

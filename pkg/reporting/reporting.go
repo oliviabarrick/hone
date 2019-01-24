@@ -69,6 +69,10 @@ func (r *Report) ReportJob(callback func(*job.Job) error) func(*job.Job) error {
 	}
 }
 
+func (r *Report) SetCache(cache cache.Cache) {
+	r.cache = cache
+}
+
 func (r *Report) UploadReport() (string, error) {
 	if r.cache == nil || ! r.cache.Enabled() {
 		return "", nil
