@@ -318,8 +318,63 @@ func (p *Parser) DecodeSecrets() (map[string]string, error) {
 
 type JobPartial struct {
 	Name string     `hcl:"name,label"`
+	Template *string `hcl:"template"`
 	Deps *[]string `hcl:"deps"`
 	Remain hcl.Body `hcl:",remain"`
+}
+
+func (j JobPartial) GetDeps(p *Parser, templates []JobPartial, jobIsTemplate bool) ([]string, error) {
+	deps := []string{}
+
+	if j.Deps != nil {
+		for _, dep := range *j.Deps {
+			deps = append(deps, dep)
+		}
+	}
+
+	attributes, diags := j.Remain.JustAttributes()
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	for _, attr := range attributes {
+		variables := attr.Expr.Variables()
+		for _, variable := range variables {
+			if variable.RootName() != "jobs" {
+				continue
+			}
+
+			if len(variable) < 2 {
+				continue
+			}
+
+			depName, ok := variable[1].(hcl.TraverseAttr)
+			if ! ok {
+				continue
+			}
+
+			deps = append(deps, depName.Name)
+		}
+	}
+
+	template, err := p.TemplateForJob(&job.Job{
+		Name: j.Name,
+		Template: j.Template,
+	}, templates, jobIsTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	if template != nil {
+		templateDeps, err := template.GetDeps(p, templates, true)
+		if err != nil {
+			return nil, err
+		}
+
+		deps = append(deps, templateDeps...)
+	}
+
+	return deps, nil
 }
 
 func (p *Parser) DecodeTemplates() ([]JobPartial, error) {
@@ -396,7 +451,7 @@ func (p *Parser) DecodeEngine() (*string, error) {
 	return load.Engine, nil
 }
 
-func (p *Parser) templateForJob(job *job.Job, templates []JobPartial, jobIsTemplate bool) (*JobPartial, error) {
+func (p *Parser) TemplateForJob(job *job.Job, templates []JobPartial, jobIsTemplate bool) (*JobPartial, error) {
 	for _, template := range templates {
 		if job.Template != nil && *job.Template == template.Name {
 			return &template, nil
@@ -431,39 +486,18 @@ func (p *Parser) DecodeJobs(templates []JobPartial) ([]*job.Job, error) {
 
 		j := &job.Job{
 			Name: partialJob.Name,
-		}
-
-		if partialJob.Deps != nil {
-			for _, dep := range *partialJob.Deps {
-				j.AddDep(dep)
-			}
+			Template: partialJob.Template,
 		}
 
 		g.AddNode(j)
 
-		attributes, diags := partialJob.Remain.JustAttributes()
-		if err := p.checkErrors(diags); err != nil {
+		deps, err := partialJob.GetDeps(p, templates, false)
+		if err != nil {
 			return nil, err
 		}
 
-		for _, attr := range attributes {
-			variables := attr.Expr.Variables()
-			for _, variable := range variables {
-				if variable.RootName() != "jobs" {
-					continue
-				}
-
-				if len(variable) < 2 {
-					continue
-				}
-
-				depName, ok := variable[1].(hcl.TraverseAttr)
-				if ! ok {
-					continue
-				}
-
-				g.AddDep(j, depName.Name)
-			}
+		for _, dep := range deps {
+			j.AddDep(dep)
 		}
 	}
 
@@ -526,7 +560,7 @@ func (p *Parser) decodeJob(j *job.Job, body hcl.Body, depth int, templates []Job
 		return p.checkErrors(e)
 	}
 
-	template, err := p.templateForJob(j, templates, jobIsTemplate)
+	template, err := p.TemplateForJob(j, templates, jobIsTemplate)
 	if err != nil {
 		return err
 	}
@@ -534,6 +568,7 @@ func (p *Parser) decodeJob(j *job.Job, body hcl.Body, depth int, templates []Job
 	if template != nil {
 		templateJob := job.Job{
 			Name: self.GetName(),
+			Template: template.Template,
 		}
 
 		if err := p.decodeJob(&templateJob, template.Remain, depth + 1, templates, true, self); err != nil {
@@ -587,12 +622,6 @@ func (p *Parser) DecodeConfig() (config types.Config, err error) {
 	if config.Jobs, err = p.DecodeJobs(templates); err != nil {
 		return
 	}
-
-/*
-	if err = config.RenderTemplates(templates); err != nil {
-		return
-	}
-*/
 
 	return
 }

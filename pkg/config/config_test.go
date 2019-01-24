@@ -480,3 +480,76 @@ job "other" {
 	assert.Equal(t, "other", jobs[1].GetName())
 	assert.Equal(t, []string{"world"}, jobs[1].GetInputs())
 }
+
+func TestConfigTemplateDependencies(t *testing.T) {
+	example := `
+template "deps" {
+  deps = ["lol"]
+}
+
+job "lol" {
+}
+
+job "moon" {
+  template = "deps"
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(jobs))
+
+	assert.Equal(t, "moon", jobs[1].GetName())
+	assert.Equal(t, []string{"lol"}, jobs[1].GetDeps())
+}
+
+func TestConfigTemplateDependenciesNested(t *testing.T) {
+	example := `
+template "more-deps" {
+  deps = ["lol", "hi"]
+
+  env = {
+    "HELLO" = jobs.other.name
+  }
+}
+
+template "deps" {
+  template = "more-deps"
+  deps = ["lol"]
+}
+
+job "lol" {
+}
+
+job "hi" {
+}
+
+job "other" {
+}
+
+job "moon" {
+  template = "deps"
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 4, len(jobs))
+
+	assert.Equal(t, "moon", jobs[3].GetName())
+	assert.Equal(t, []string{"hi", "lol", "other"}, sorted(jobs[3].GetDeps()))
+}

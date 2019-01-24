@@ -65,7 +65,9 @@ func (j *Job) Default(def Job) {
 		j.Workdir = def.Workdir
 	}
 
-	j.deps = append(j.deps, def.GetDeps()...)
+	for _, dep := range def.GetDeps() {
+		j.AddDep(dep)
+	}
 
 	if def.Env != nil {
 		if j.Env == nil {
