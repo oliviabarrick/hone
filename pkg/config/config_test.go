@@ -553,3 +553,40 @@ job "moon" {
 	assert.Equal(t, "moon", jobs[3].GetName())
 	assert.Equal(t, []string{"hi", "lol", "other"}, sorted(jobs[3].GetDeps()))
 }
+
+func TestConfigTemplateEnvironment(t *testing.T) {
+	example := `
+template "deps" {
+  env = {
+      "HELLO" = self.name
+      "HI" = "HELLO"
+  }
+}
+
+job "moon" {
+  template = "deps"
+
+  env = {
+      "HI" = "WOW"
+      "TEST" = "123"
+  }
+}
+`
+
+	parser := NewParser()
+	err := parser.Parse(example)
+	assert.Nil(t, err)
+
+	templates, err := parser.DecodeTemplates()
+	assert.Nil(t, err)
+
+	jobs, err := parser.DecodeJobs(templates)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(jobs))
+
+	assert.Equal(t, map[string]string{
+		"HI": "WOW",
+		"TEST": "123",
+		"HELLO": "moon",
+	}, jobs[0].GetEnv())
+}
