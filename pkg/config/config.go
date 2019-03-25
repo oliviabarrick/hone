@@ -51,8 +51,10 @@ func (p *Parser) Parse(config string) error {
 
 func (p *Parser) ParseFile(path string) error {
 	hclFile, diags := p.parser.ParseHCLFile(path)
-	p.remain = hclFile.Body
-	p.body = hclFile.Body
+	if hclFile != nil {
+		p.remain = hclFile.Body
+		p.body = hclFile.Body
+	}
 	return p.checkErrors(diags)
 }
 

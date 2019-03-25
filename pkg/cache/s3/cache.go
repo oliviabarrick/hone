@@ -199,14 +199,16 @@ func (w *S3Writer) Init(s3 *S3Cache, namespace, filename string) string {
 	w.done = make(chan error)
 
 	go func() {
+		var err error
+
 		if s3.s3 == nil {
-			w.done <- nil
-			return
+			_, err = ioutil.ReadAll(reader)
+		} else {
+			_, err = s3.s3.PutObject(s3.Bucket, path, reader, -1, minio.PutObjectOptions{
+				ContentType: mime.TypeByExtension(filepath.Ext(filename)),
+			})
 		}
 
-		_, err := s3.s3.PutObject(s3.Bucket, path, reader, -1, minio.PutObjectOptions{
-			ContentType: mime.TypeByExtension(filepath.Ext(filename)),
-		})
 		w.done <- err
 	}()
 
