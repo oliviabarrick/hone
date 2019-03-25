@@ -65,20 +65,20 @@ func (v *Vault) LoadSecrets(workspace string, secrets []string) (map[string]stri
     secret := secretSplit[0]
 
 		secretMap[secret] = val
-		secretValue := secretValuesMap[secret]
-		if secretValue != "" {
-			secretMap[secret] = secretValue
+		if val == "" && secretValuesMap[secret] != "" {
+			secretMap[secret] = secretValuesMap[secret]
 		}
 		if secretMap[secret] == "" && len(secretSplit) == 1 {
 			return nil, errors.New(fmt.Sprintf("Failed to load secret %s from vault or environment.", secret))
 		}
+		secretValuesMap[secret] = secretMap[secret]
 	}
 
 	if v.client != nil {
 		c := v.client.Logical()
 
 		_, err := c.Write(secretPath, map[string]interface{}{
-			"data": secretMap,
+			"data": secretValuesMap,
 		})
 		if err != nil {
 			return nil, err
