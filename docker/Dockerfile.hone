@@ -1,0 +1,6 @@
+FROM debian:stretch-slim
+
+RUN apt-get update && apt-get install -y --force-yes -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" openssl ca-certificates
+COPY hone /usr/bin/hone
+
+ENTRYPOINT ["/usr/bin/hone"]
