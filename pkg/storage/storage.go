@@ -8,7 +8,7 @@ import (
 func UploadInputs(c cache.Cache, j *job.Job) (string, error) {
 	entries := []cache.CacheEntry{}
 
-	err := cache.WalkInputs(j, func(filepath string) error {
+	err := cache.WalkInputs(j.GetInputs(), func(filepath string) error {
 		cacheEntry, err := c.Set("srcs", filepath)
 		if err != nil {
 			return err

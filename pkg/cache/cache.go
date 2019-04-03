@@ -32,8 +32,8 @@ type Cache interface {
 	Writer(string, string) (io.WriteCloser, string, error)
 }
 
-func WalkInputs(job *config.Job, fn func(string) error) error {
-	for _, input := range job.GetInputs() {
+func WalkInputs(inputs []string, fn func(string) error) error {
+	for _, input := range inputs {
 		inputFile, err := os.Open(input)
 		if err != nil && os.IsNotExist(err) {
 			matches, err := doublestar.Glob(input)
@@ -98,7 +98,7 @@ func HashJob(job *config.Job) (string, error) {
 
 	sum.Write(structhash.Sha1(job, 1))
 
-	err := WalkInputs(job, func(path string) error {
+	err := WalkInputs(job.GetInputs(), func(path string) error {
 		data, err := ioutil.ReadFile(path)
 		if err != nil {
 			return err
@@ -178,7 +178,17 @@ func CacheJob(c Cache, callback func(*config.Job) error) func(*config.Job) error
 		}
 
 		logger.LogDebug(job, fmt.Sprintf("Dumping to cache (%s).", c.Name()))
-		entries, err := DumpOutputs(cacheKey, c, job.GetOutputs())
+
+		outputs := []string{}
+		err = WalkInputs(job.GetOutputs(), func(output string) error {
+			outputs = append(outputs, output)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		entries, err := DumpOutputs(cacheKey, c, outputs)
 		if err != nil {
 			return err
 		}
