@@ -412,3 +412,4 @@ The only required parameter is `token`, however, other options are:
 * `repo`: (optional) the name of the repository to post status to, by default infers from the URL in the remote.
 * `remote`: (optional) the Git remote to attempt to infer provider configuration from, defaults to `origin`.
 * `condition`: (optional) a condition that must be met in order to report the status. See the conditions section of the job for more information.
+
