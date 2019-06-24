@@ -163,8 +163,6 @@ job "hone-image" {
 kaniko --dockerfile=docker/Dockerfile.hone --context=/build/docker/ \
     --destination=${secrets.DOCKER_USER}/hone:latest
 EOF
-
-    engine = "docker"
 }
 
 job "images" {
