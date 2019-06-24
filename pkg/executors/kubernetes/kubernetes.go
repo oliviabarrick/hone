@@ -14,15 +14,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"os"
-	"os/user"
 	"path/filepath"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 type Kubernetes struct {
 	Namespace  *string `hcl:"namespace"`
-	Kubeconfig *string `hcl:"kubeconfig"`
 	Cache      cache.Cache
 	cacheKey   string
 	pod        string
@@ -31,26 +28,12 @@ type Kubernetes struct {
 }
 
 func (k *Kubernetes) Init() error {
-	kubeconfig := os.Getenv("KUBECONFIG")
-
-	if k.Kubeconfig != nil {
-		kubeconfig = *k.Kubeconfig
-	}
-
-	if kubeconfig == "" {
-		usr, err := user.Current()
-		if err != nil {
-			return err
-		}
-		kubeconfig = filepath.Join(usr.HomeDir, ".kube", "config")
-	}
-
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	cfg, err := config.GetConfig()
 	if err != nil {
 		return err
 	}
 
-	k.clientset, err = kubernetes.NewForConfig(config)
+	k.clientset, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return err
 	}

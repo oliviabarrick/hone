@@ -17,6 +17,8 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.39.0 // indirect
+	github.com/go-logr/logr v0.1.0 // indirect
+	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/gogo/protobuf v1.1.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
@@ -50,6 +52,9 @@ require (
 	github.com/sirupsen/logrus v1.2.0
 	github.com/stretchr/testify v1.2.2
 	github.com/zclconf/go-cty v0.0.0-20181017232614-01c5aba823a6
+	go.uber.org/atomic v1.4.0 // indirect
+	go.uber.org/multierr v1.1.0 // indirect
+	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	gonum.org/v1/gonum v0.0.0-20181029232933-400065bf7646
@@ -59,4 +64,5 @@ require (
 	k8s.io/api v0.0.0-20181102122915-de5c567eef5c
 	k8s.io/apimachinery v0.0.0-20181101131016-0aa9751e8aaf
 	k8s.io/client-go v9.0.0+incompatible
+	sigs.k8s.io/controller-runtime v0.1.12
 )
