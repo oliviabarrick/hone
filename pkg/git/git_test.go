@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/src-d/go-billy.v4/memfs"
+	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"

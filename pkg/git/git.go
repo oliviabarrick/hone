@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 

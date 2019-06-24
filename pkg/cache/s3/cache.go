@@ -12,8 +12,10 @@ import (
 	"os"
 	"path/filepath"
 
+	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/logger"
+	minio "github.com/minio/minio-go"
 )
 
 type S3Cache struct {

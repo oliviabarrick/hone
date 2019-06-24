@@ -72,8 +72,8 @@ job "generate" {
     shell = "go generate ./pkg/reporting/"
 
     inputs = [
-        "go.mod", "go.sum",
-        "./pkg/reporting/reporting.go", "./templates/*", "./bin/go-bindata"
+        "./pkg/reporting/reporting.go", "./pkg/reporting/templates/*",
+        "./bin/go-bindata"
     ]
     outputs = ["./pkg/reporting/bindata.go"]
 
