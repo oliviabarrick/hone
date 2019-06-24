@@ -63,7 +63,7 @@ template "docker" {
 job "go-bindata" {
     inputs = ["go.mod", "go.sum"]
     outputs = ["./bin/go-bindata"]
-    shell = "go get  -u github.com/jteeuwen/go-bindata/..."
+    shell = "go get -u github.com/jteeuwen/go-bindata/..."
 }
 
 job "generate" {
@@ -71,7 +71,10 @@ job "generate" {
 
     shell = "go generate ./pkg/reporting/"
 
-    inputs = ["./pkg/reporting/reporting.go", "./templates/*"]
+    inputs = [
+        "go.mod", "go.sum",
+        "./pkg/reporting/reporting.go", "./templates/*", "./bin/go-bindata"
+    ]
     outputs = ["./pkg/reporting/bindata.go"]
 
     env = {
