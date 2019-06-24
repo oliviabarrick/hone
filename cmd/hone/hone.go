@@ -99,10 +99,7 @@ func main() {
 	callback = report.ReportJob(cache.CacheJob(fileCache, callback))
 
 	config.DockerConfig = &docker.DockerConfig{}
-	if err := config.DockerConfig.Init(); err != nil {
-		logger.Errorf("Error initializing Docker: %s", err)
-		report.Exit(err)
-	}
+	config.DockerConfig.Init()
 
 	errs = g.ResolveTarget(target, func(n node.Node) error {
 		return logger.LogJob(callback)(n.(*job.Job))
