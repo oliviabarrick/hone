@@ -129,6 +129,8 @@ kubernetes {
 }
 ```
 
+The default namespace can also be set by specifying the `$KUBERNETES_NAMESPACE` environment variable.
+
 # Environment variables
 
 You can pass in environment variables to use in your configuration in the `env` key:

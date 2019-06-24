@@ -24,10 +24,6 @@ vault {
     token = "${env.VAULT_TOKEN}"
 }
 
-kubernetes {
-    namespace = "default"
-}
-
 cache {
     s3 {
         access_key = "${secrets.S3_ACCESS_KEY}"

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/logger"
@@ -39,7 +40,10 @@ func (k *Kubernetes) Init() error {
 	}
 
 	if k.Namespace == nil {
-		namespace := "default"
+		namespace := os.Getenv("KUBERNETES_NAMESPACE")
+		if namespace == "" {
+			namespace = "default"
+		}
 		k.Namespace = &namespace
 	}
 
