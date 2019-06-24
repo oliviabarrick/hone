@@ -3,15 +3,16 @@ package cache
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/bmatcuk/doublestar"
-	"github.com/cnf/structhash"
-	config "github.com/justinbarrick/hone/pkg/job"
-	"github.com/justinbarrick/hone/pkg/logger"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/bmatcuk/doublestar"
+	"github.com/cnf/structhash"
+	config "github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
 )
 
 type CacheEntry struct {

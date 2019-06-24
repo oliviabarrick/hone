@@ -2,11 +2,12 @@ package filecache
 
 import (
 	"encoding/json"
-	"github.com/justinbarrick/hone/pkg/cache"
-	"github.com/justinbarrick/hone/pkg/logger"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/logger"
 )
 
 type FileCache struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
 	"github.com/hashicorp/vault/api"
 	"github.com/justinbarrick/hone/pkg/logger"
 )
@@ -62,7 +63,7 @@ func (v *Vault) LoadSecrets(workspace string, secrets []string) (map[string]stri
 			val = secretSplit[1]
 		}
 
-    secret := secretSplit[0]
+		secret := secretSplit[0]
 
 		secretMap[secret] = val
 		if val == "" && secretValuesMap[secret] != "" {

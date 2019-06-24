@@ -4,17 +4,16 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"github.com/hashicorp/go-rootcerts"
-	"github.com/justinbarrick/hone/pkg/cache"
-	"github.com/justinbarrick/hone/pkg/logger"
-	"github.com/minio/minio-go"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime"
 	"net/http"
 	"os"
-	"fmt"
 	"path/filepath"
+
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/logger"
 )
 
 type S3Cache struct {
@@ -178,7 +177,7 @@ func (c *S3Cache) Enabled() bool {
 		return false
 	}
 
-	return ! c.Disabled
+	return !c.Disabled
 }
 
 func (c *S3Cache) BaseURL() string {

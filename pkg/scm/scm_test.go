@@ -3,8 +3,9 @@ package scm
 import (
 	"context"
 	"testing"
-	"github.com/stretchr/testify/assert"
+
 	"github.com/h2non/gock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSCM(t *testing.T) {
@@ -19,7 +20,7 @@ func TestSCM(t *testing.T) {
 
 	scm := SCM{
 		Token: "API_TOKEN",
-		Repo: &repo,
+		Repo:  &repo,
 	}
 
 	err := scm.Init(context.TODO())

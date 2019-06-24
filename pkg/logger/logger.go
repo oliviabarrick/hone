@@ -1,19 +1,20 @@
 package logger
 
 import (
-	"github.com/justinbarrick/hone/pkg/job"
-	"github.com/justinbarrick/hone/pkg/graph/node"
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
-	"github.com/apex/log/handlers/json"
-	"github.com/apex/log/handlers/multi"
-	"github.com/fatih/color"
 	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
+	"github.com/apex/log/handlers/json"
+	"github.com/apex/log/handlers/multi"
+	"github.com/fatih/color"
+	"github.com/justinbarrick/hone/pkg/graph/node"
+	"github.com/justinbarrick/hone/pkg/job"
 )
 
 type LogIOWriter struct {
@@ -24,24 +25,24 @@ type LogIOWriter struct {
 func (w *LogIOWriter) Write(b []byte) (int, error) {
 	w.buf = append(w.buf, b...)
 
-	splitLines := bytes.Split(w.buf, []byte{'\n',})
+	splitLines := bytes.Split(w.buf, []byte{'\n'})
 
 	numLines := len(splitLines)
 
 	if numLines == 0 {
 		return 0, nil
 	} else if numLines > 1 {
-		for _, line := range splitLines[:numLines - 1] {
+		for _, line := range splitLines[:numLines-1] {
 			w.Logger(string(line))
 		}
 	}
 
-	w.buf = splitLines[numLines - 1]
+	w.buf = splitLines[numLines-1]
 	return len(b), nil
 }
 
 type LogHandler struct {
-	mu sync.Mutex
+	mu         sync.Mutex
 	LongestJob int
 }
 
@@ -101,13 +102,13 @@ func InitLogger(longestJob int, remoteLog io.WriteCloser) {
 
 	logger = &log.Logger{
 		Handler: handler,
-		Level: log.DebugLevel,
+		Level:   log.DebugLevel,
 	}
 }
 func LogWriter(job node.Node) io.Writer {
 	return &LogIOWriter{
 		Logger: logger.WithFields(log.Fields{
-			"job": job.GetName(),
+			"job":    job.GetName(),
 			"stdout": true,
 		}).Info,
 	}
@@ -116,7 +117,7 @@ func LogWriter(job node.Node) io.Writer {
 func LogWriterError(job node.Node) io.Writer {
 	return &LogIOWriter{
 		Logger: logger.WithFields(log.Fields{
-			"job": job.GetName(),
+			"job":    job.GetName(),
 			"stderr": true,
 		}).Warn,
 	}

@@ -3,13 +3,14 @@ package graph
 import (
 	"errors"
 	"fmt"
+	"sync"
+
 	. "github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/utils"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
-	"sync"
 )
 
 type Graph struct {

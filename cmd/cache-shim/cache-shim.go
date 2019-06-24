@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"log"
+	"os"
+
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/cache/s3"
 	"github.com/justinbarrick/hone/pkg/executors/local"
 	"github.com/justinbarrick/hone/pkg/logger"
-	"log"
-	"os"
 )
 
 func main() {

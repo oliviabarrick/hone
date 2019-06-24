@@ -1,6 +1,13 @@
 package scm
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/drone/go-scm/scm"
 	"github.com/drone/go-scm/scm/driver/bitbucket"
 	"github.com/drone/go-scm/scm/driver/gitea"
@@ -9,15 +16,9 @@ import (
 	"github.com/drone/go-scm/scm/driver/gogs"
 	"github.com/drone/go-scm/scm/driver/stash"
 	"github.com/drone/go-scm/scm/transport"
-	"github.com/justinbarrick/hone/pkg/git"
 	"github.com/justinbarrick/hone/pkg/events"
+	"github.com/justinbarrick/hone/pkg/git"
 	"github.com/justinbarrick/hone/pkg/logger"
-	"context"
-	"errors"
-	"fmt"
-	"net/http"
-	"os"
-	"strings"
 )
 
 type State int
@@ -44,16 +45,16 @@ const (
 )
 
 type SCM struct {
-	Provider *Provider  `hcl:"provider"`
-	URL      *string    `hcl:"url"`
-	Token    string     `hcl:"token"`
-	Repo     *string    `hcl:"repo"`
-	Remote   *string    `hcl:"remote"`
+	Provider  *Provider `hcl:"provider"`
+	URL       *string   `hcl:"url"`
+	Token     string    `hcl:"token"`
+	Repo      *string   `hcl:"repo"`
+	Remote    *string   `hcl:"remote"`
 	Condition *string   `hcl:"condition"`
-	Git      git.Repository
-	commit   string
-	client   *scm.Client
-	ctx      context.Context
+	Git       git.Repository
+	commit    string
+	client    *scm.Client
+	ctx       context.Context
 }
 
 func (s *SCM) GetURL() (string, error) {
@@ -76,12 +77,12 @@ func (s *SCM) GetURL() (string, error) {
 	return defaultURL[provider], nil
 }
 
-func (s *SCM) GetProvider() (Provider) {
-	urlToProvider := map[string]Provider {
-		"github.com": ProviderGithub,
+func (s *SCM) GetProvider() Provider {
+	urlToProvider := map[string]Provider{
+		"github.com":    ProviderGithub,
 		"bitbucket.com": ProviderBitbucket,
 		"bitbucket.org": ProviderBitbucket,
-		"gitlab.com": ProviderGitlab,
+		"gitlab.com":    ProviderGitlab,
 	}
 
 	var provider Provider
@@ -175,9 +176,9 @@ func (s *SCM) Init(ctx context.Context) (err error) {
 
 func (s SCM) PostStatus(state State, commit string, message string, reportUrl string) error {
 	status := &scm.StatusInput{
-		State: scm.State(state),
-		Label: "hone",
-		Desc:  message,
+		State:  scm.State(state),
+		Label:  "hone",
+		Desc:   message,
 		Target: reportUrl,
 	}
 
@@ -210,18 +211,18 @@ func InitSCMs(scms []*SCM, env map[string]string) ([]*SCM, error) {
 
 	// TODO: Status() doesn't ignore gitignore: https://github.com/src-d/go-git/issues/844
 	/*
-	repo, err := git.NewRepository()
-	if err != nil {
-		return finalScms, err
-	}
+		repo, err := git.NewRepository()
+		if err != nil {
+			return finalScms, err
+		}
 
-	dirty, err := repo.IsDirty()
-	if err != nil {
-		return finalScms, errors.New(fmt.Sprintf("checking if repository is dirty: %s", err))
-	} else if dirty {
-		logger.Printf("Not posting status because directory is dirty.")
-		return finalScms, nil
-	}
+		dirty, err := repo.IsDirty()
+		if err != nil {
+			return finalScms, errors.New(fmt.Sprintf("checking if repository is dirty: %s", err))
+		} else if dirty {
+			logger.Printf("Not posting status because directory is dirty.")
+			return finalScms, nil
+		}
 	*/
 
 	envMap := map[string]interface{}{}

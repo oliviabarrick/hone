@@ -2,8 +2,9 @@ package cache
 
 import (
 	"testing"
-	"github.com/stretchr/testify/assert"
+
 	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHashJob(t *testing.T) {

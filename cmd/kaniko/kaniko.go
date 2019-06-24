@@ -4,12 +4,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/justinbarrick/hone/pkg/executors/local"
-	"github.com/justinbarrick/hone/pkg/logger"
 	"log"
 	"os"
-)
 
+	"github.com/justinbarrick/hone/pkg/executors/local"
+	"github.com/justinbarrick/hone/pkg/logger"
+)
 
 type DockerAuth struct {
 	Auth string `json"auth"`

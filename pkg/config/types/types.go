@@ -3,13 +3,14 @@ package types
 import (
 	"errors"
 	"fmt"
+
 	"github.com/justinbarrick/hone/pkg/cache/file"
 	"github.com/justinbarrick/hone/pkg/cache/s3"
-	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
 	"github.com/justinbarrick/hone/pkg/executors/docker"
+	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
+	"github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/scm"
-	"github.com/justinbarrick/hone/pkg/graph/node"
 )
 
 type Config struct {

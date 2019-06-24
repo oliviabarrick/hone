@@ -2,14 +2,15 @@ package local
 
 import (
 	"context"
-	"github.com/justinbarrick/hone/pkg/job"
-	"github.com/justinbarrick/hone/pkg/logger"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
-	"fmt"
+
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
 )
 
 func ParseEnv(env []string) map[string]string {

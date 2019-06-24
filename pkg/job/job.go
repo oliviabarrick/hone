@@ -1,15 +1,15 @@
-
 package job
 
 import (
-	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/gocty"
-	"github.com/justinbarrick/hone/pkg/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/justinbarrick/hone/pkg/utils"
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/gocty"
 )
 
 type StringSet []string
@@ -23,7 +23,7 @@ func (s StringSet) Strings() []string {
 
 	set := []string{}
 
-	for key, _ := range stringMap {
+	for key := range stringMap {
 		set = append(set, key)
 	}
 
@@ -32,27 +32,27 @@ func (s StringSet) Strings() []string {
 }
 
 type Job struct {
-	Name    string             `hcl:"name,label" json:"name"`
-	Template *string `hcl:"template" hash:"-" json:"-"`
-	Image   *string            `hcl:"image" json:"image"`
-	Shell   *string            `hcl:"shell" json:"shell"`
-	Exec    *StringSet         `hcl:"exec" json:"exec" hash:"method:Strings"`
-	Inputs  *StringSet         `hcl:"inputs" json:"inputs" hash:"method:Strings"`
-	Outputs *StringSet         `hcl:"outputs" json:"outputs" hash:"method:Strings"`
-	Env     *map[string]string `hcl:"env" json:"-"`
-	Deps    *StringSet         `hcl:"deps" json:"deps" hash:"method:Strings"`
-	Engine  *string            `hcl:"engine" json:"engine" hash:"-"`
-	Condition *string          `hcl:"condition" json:"condition"`
-	Privileged *bool           `hcl:"privileged" json:"privileged"`
-	Workdir *string            `hcl:"workdir" json:"workdir"`
-	Service *bool              `hcl:"service" json:"service" hash:"-"`
-	Cached  bool               `hash:"-" json:"cached"`
-	Hash         string        `hash:"-" json:"hash"`
-	OutputHashes map[string]string      `hash:"-" json:"outputHashes"`
-	Detach  chan bool          `hash:"-" json:"-"`
-	Stop    chan bool          `hash:"-" json:"-"`
-	Error   error              `hash:"-" json:"error"`
-	done    chan bool          `hash:"-"`
+	Name         string             `hcl:"name,label" json:"name"`
+	Template     *string            `hcl:"template" hash:"-" json:"-"`
+	Image        *string            `hcl:"image" json:"image"`
+	Shell        *string            `hcl:"shell" json:"shell"`
+	Exec         *StringSet         `hcl:"exec" json:"exec" hash:"method:Strings"`
+	Inputs       *StringSet         `hcl:"inputs" json:"inputs" hash:"method:Strings"`
+	Outputs      *StringSet         `hcl:"outputs" json:"outputs" hash:"method:Strings"`
+	Env          *map[string]string `hcl:"env" json:"-"`
+	Deps         *StringSet         `hcl:"deps" json:"deps" hash:"method:Strings"`
+	Engine       *string            `hcl:"engine" json:"engine" hash:"-"`
+	Condition    *string            `hcl:"condition" json:"condition"`
+	Privileged   *bool              `hcl:"privileged" json:"privileged"`
+	Workdir      *string            `hcl:"workdir" json:"workdir"`
+	Service      *bool              `hcl:"service" json:"service" hash:"-"`
+	Cached       bool               `hash:"-" json:"cached"`
+	Hash         string             `hash:"-" json:"hash"`
+	OutputHashes map[string]string  `hash:"-" json:"outputHashes"`
+	Detach       chan bool          `hash:"-" json:"-"`
+	Stop         chan bool          `hash:"-" json:"-"`
+	Error        error              `hash:"-" json:"error"`
+	done         chan bool          `hash:"-"`
 }
 
 func (j *Job) Default(def Job) {
@@ -200,7 +200,7 @@ func (j Job) GetError() error {
 	return j.Error
 }
 
-func (j *Job) GetDone() (chan bool) {
+func (j *Job) GetDone() chan bool {
 	if j.done == nil {
 		j.done = make(chan bool)
 	}
@@ -265,36 +265,36 @@ func (j Job) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(struct {
-		Name string
-		Image string
-		Shell []string
-		Inputs []string
-		Outputs []string
-		Deps []string
-		Engine string
-		Condition string
-		Privileged bool
-		Service bool
-		Successful bool
-		Error string
-		Cached bool
-		Hash string
+		Name         string
+		Image        string
+		Shell        []string
+		Inputs       []string
+		Outputs      []string
+		Deps         []string
+		Engine       string
+		Condition    string
+		Privileged   bool
+		Service      bool
+		Successful   bool
+		Error        string
+		Cached       bool
+		Hash         string
 		OutputHashes map[string]string
 	}{
-		Name: j.GetName(),
-		Image: j.GetImage(),
-		Shell: j.GetShell(),
-		Inputs: j.GetInputs(),
-		Outputs: j.GetOutputs(),
-		Deps: j.GetDeps(),
-		Engine: j.GetEngine(),
-		Condition: condition,
-		Privileged: privileged,
-		Service: j.IsService(),
-		Successful: (j.Error == nil),
-		Error: errMsg,
-		Cached: j.Cached,
-		Hash: j.Hash,
+		Name:         j.GetName(),
+		Image:        j.GetImage(),
+		Shell:        j.GetShell(),
+		Inputs:       j.GetInputs(),
+		Outputs:      j.GetOutputs(),
+		Deps:         j.GetDeps(),
+		Engine:       j.GetEngine(),
+		Condition:    condition,
+		Privileged:   privileged,
+		Service:      j.IsService(),
+		Successful:   (j.Error == nil),
+		Error:        errMsg,
+		Cached:       j.Cached,
+		Hash:         j.Hash,
 		OutputHashes: j.OutputHashes,
 	})
 }
@@ -354,7 +354,6 @@ func (j Job) setMapStringMap(objMap map[string]cty.Value, key string, value *map
 
 	return nil
 }
-
 
 func (j *Job) ToCty() (cty.Value, error) {
 	objMap := map[string]cty.Value{

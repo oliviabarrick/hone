@@ -1,11 +1,6 @@
 package reporting
 
 import (
-	"github.com/justinbarrick/hone/pkg/cache"
-	"github.com/justinbarrick/hone/pkg/job"
-	"github.com/justinbarrick/hone/pkg/git"
-	"github.com/justinbarrick/hone/pkg/logger"
-	"github.com/justinbarrick/hone/pkg/scm"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -13,6 +8,12 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/justinbarrick/hone/pkg/cache"
+	"github.com/justinbarrick/hone/pkg/git"
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/scm"
 )
 
 //go:generate go-bindata -pkg reporting -nomemcopy templates/...
@@ -20,21 +21,21 @@ import (
 type Report struct {
 	GitBranch string
 	GitCommit string
-	GitTag string
+	GitTag    string
 
 	Target string
 
 	StartTime time.Time
-	EndTime time.Time
+	EndTime   time.Time
 
 	Success bool
-	Jobs []*job.Job
+	Jobs    []*job.Job
 
 	LogURL string
 
-	scms []*scm.SCM
+	scms  []*scm.SCM
 	cache cache.Cache
-	lock sync.Mutex
+	lock  sync.Mutex
 }
 
 func New(target string, scms []*scm.SCM, cache cache.Cache) (Report, error) {
@@ -47,11 +48,11 @@ func New(target string, scms []*scm.SCM, cache cache.Cache) (Report, error) {
 	return Report{
 		GitBranch: branch,
 		GitCommit: commit,
-		GitTag: tag,
-		Target: target,
+		GitTag:    tag,
+		Target:    target,
 		StartTime: time.Now().UTC(),
-		cache: cache,
-		scms: scms,
+		cache:     cache,
+		scms:      scms,
 	}, nil
 }
 
@@ -74,7 +75,7 @@ func (r *Report) SetCache(cache cache.Cache) {
 }
 
 func (r *Report) UploadReport() (string, error) {
-	if r.cache == nil || ! r.cache.Enabled() {
+	if r.cache == nil || !r.cache.Enabled() {
 		return "", nil
 	}
 
@@ -104,12 +105,12 @@ func (r *Report) UploadReport() (string, error) {
 		return "", err
 	}
 
-	template.Must(template.New("").Parse(string(data))).Execute(reportWriter, struct{
+	template.Must(template.New("").Parse(string(data))).Execute(reportWriter, struct {
 		ReportJSON string
-		LogURL string
+		LogURL     string
 	}{
 		ReportJSON: reportJsonUrl,
-		LogURL: r.LogURL,
+		LogURL:     r.LogURL,
 	})
 
 	reportWriter.Close()

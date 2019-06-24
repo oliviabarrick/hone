@@ -4,23 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/logger"
-	"io"
-	"os"
-	"time"
-	"path/filepath"
 )
 
 type DockerConfig struct {
-	docker *docker.Client
+	docker  *docker.Client
 	network string
 }
 
@@ -56,7 +57,7 @@ func (dc *DockerConfig) DeleteNetwork() error {
 
 type Docker struct {
 	DockerConfig *DockerConfig
-	ctr    string
+	ctr          string
 }
 
 func (d *Docker) Init() error {
@@ -114,7 +115,7 @@ func (d *Docker) Wait(ctx context.Context, j *job.Job) error {
 	logger.Log(j, fmt.Sprintf("Container exited with status: %d", statusCode))
 	if statusCode != 128 && statusCode != 0 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
-	} else if ! j.IsService() && statusCode == 128 {
+	} else if !j.IsService() && statusCode == 128 {
 		return errors.New(fmt.Sprintf("Container returned status code: %d", statusCode))
 	}
 
@@ -160,8 +161,8 @@ func (d *Docker) Start(ctx context.Context, j *job.Job) error {
 		Privileged: j.IsPrivileged(),
 	}, &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
-			"hone": &network.EndpointSettings{
-				Aliases: []string{j.GetName()},
+			"hone": {
+				Aliases:   []string{j.GetName()},
 				NetworkID: d.DockerConfig.network,
 			},
 		},

@@ -1,22 +1,23 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/config"
+	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/executors"
 	"github.com/justinbarrick/hone/pkg/executors/docker"
 	"github.com/justinbarrick/hone/pkg/graph"
 	"github.com/justinbarrick/hone/pkg/graph/node"
 	"github.com/justinbarrick/hone/pkg/job"
-	"github.com/justinbarrick/hone/pkg/events"
 	"github.com/justinbarrick/hone/pkg/logger"
-	"github.com/justinbarrick/hone/pkg/scm"
 	"github.com/justinbarrick/hone/pkg/reporting"
-	"fmt"
-	"log"
-	"io"
-	"os"
-	"path/filepath"
+	"github.com/justinbarrick/hone/pkg/scm"
 )
 
 func main() {

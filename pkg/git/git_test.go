@@ -2,13 +2,13 @@ package git
 
 import (
 	"testing"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-billy.v4/memfs"
 	"gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
-	"gopkg.in/src-d/go-billy.v4/memfs"
-	"github.com/stretchr/testify/assert"
 )
 
 func emptyRepo(t *testing.T) *git.Repository {
@@ -27,7 +27,7 @@ func doCommit(t *testing.T, r *git.Repository) plumbing.Hash {
 
 	hash, err := tree.Commit("First commit!", &git.CommitOptions{
 		Author: &object.Signature{
-			Name: "test",
+			Name:  "test",
 			Email: "test@test.com",
 		},
 	})
@@ -79,7 +79,6 @@ func noBranch(t *testing.T) *git.Repository {
 
 	return r
 }
-
 
 func makeBranch(t *testing.T) *git.Repository {
 	r := oneCommit(t)
@@ -336,7 +335,7 @@ func TestGitRepoUrlRemoteFound(t *testing.T) {
 				repoUrl,
 			},
 		})
-		
+
 		r := Repository{
 			Repo: repo,
 		}

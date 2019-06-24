@@ -4,25 +4,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sort"
+	"strings"
+
+	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/hashicorp/hcl2/hcl"
 	"github.com/hashicorp/hcl2/hclparse"
-	"github.com/hashicorp/hcl2/gohcl"
 	"github.com/justinbarrick/hone/pkg/cache/file"
 	"github.com/justinbarrick/hone/pkg/config/types"
 	"github.com/justinbarrick/hone/pkg/executors/kubernetes"
 	"github.com/justinbarrick/hone/pkg/git"
-	"github.com/justinbarrick/hone/pkg/job"
-	"github.com/justinbarrick/hone/pkg/scm"
-	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/graph"
 	"github.com/justinbarrick/hone/pkg/graph/node"
+	"github.com/justinbarrick/hone/pkg/job"
+	"github.com/justinbarrick/hone/pkg/logger"
+	"github.com/justinbarrick/hone/pkg/scm"
 	"github.com/justinbarrick/hone/pkg/secrets/vault"
 	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/gocty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	"github.com/zclconf/go-cty/cty/gocty"
 )
 
 type Remains interface {
@@ -30,10 +31,10 @@ type Remains interface {
 }
 
 type Parser struct {
-	parser  *hclparse.Parser
-	body    hcl.Body
-	remain  hcl.Body
-	ctx *hcl.EvalContext
+	parser *hclparse.Parser
+	body   hcl.Body
+	remain hcl.Body
+	ctx    *hcl.EvalContext
 }
 
 func NewParser() Parser {
@@ -123,8 +124,8 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 		p.ctx.Functions["basename"] = function.New(&function.Spec{
 			Params: []function.Parameter{
 				{
-					Name:             "path",
-					Type:             cty.String,
+					Name: "path",
+					Type: cty.String,
 				},
 			},
 			Type: function.StaticReturnType(cty.String),
@@ -134,8 +135,8 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 		})
 		p.ctx.Functions["pathjoin"] = function.New(&function.Spec{
 			VarParam: &function.Parameter{
-				Name:      "paths",
-				Type:      cty.String,
+				Name: "paths",
+				Type: cty.String,
 			},
 			Type: function.StaticReturnType(cty.String),
 			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
@@ -146,17 +147,17 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 				}
 
 				return cty.StringVal(filepath.Join(paths...)), nil
-    	},
+			},
 		})
 		p.ctx.Functions["join"] = function.New(&function.Spec{
 			Params: []function.Parameter{
 				{
-					Name:             "strs",
-					Type:             cty.List(cty.String),
+					Name: "strs",
+					Type: cty.List(cty.String),
 				},
 				{
-					Name:             "sep",
-					Type:             cty.String,
+					Name: "sep",
+					Type: cty.String,
 				},
 			},
 			Type: function.StaticReturnType(cty.String),
@@ -170,17 +171,17 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 				}
 
 				return cty.StringVal(strings.Join(strs, args[1].AsString())), nil
-    	},
+			},
 		})
 		p.ctx.Functions["split"] = function.New(&function.Spec{
 			Params: []function.Parameter{
 				{
-					Name:             "str",
-					Type:             cty.String,
+					Name: "str",
+					Type: cty.String,
 				},
 				{
-					Name:             "sep",
-					Type:             cty.String,
+					Name: "sep",
+					Type: cty.String,
 				},
 			},
 			Type: function.StaticReturnType(cty.List(cty.String)),
@@ -196,8 +197,8 @@ func (p *Parser) GetContext() *hcl.EvalContext {
 		p.ctx.Functions["sorted"] = function.New(&function.Spec{
 			Params: []function.Parameter{
 				{
-					Name:             "strs",
-					Type:             cty.List(cty.String),
+					Name: "strs",
+					Type: cty.List(cty.String),
 				},
 			},
 			Type: function.StaticReturnType(cty.List(cty.String)),
@@ -244,8 +245,8 @@ func (p *Parser) DecodeEnv() (map[string]string, error) {
 	envMap := map[string]string{}
 
 	envStruct := struct {
-		Env *[]string `hcl:"env"`
-		Remain hcl.Body `hcl:",remain"`
+		Env    *[]string `hcl:"env"`
+		Remain hcl.Body  `hcl:",remain"`
 	}{}
 
 	err := p.DecodeBody(&envStruct)
@@ -341,10 +342,10 @@ func (p *Parser) DecodeSecrets() (map[string]string, error) {
 }
 
 type JobPartial struct {
-	Name string     `hcl:"name,label"`
-	Template *string `hcl:"template"`
-	Deps *[]string `hcl:"deps"`
-	Remain hcl.Body `hcl:",remain"`
+	Name     string    `hcl:"name,label"`
+	Template *string   `hcl:"template"`
+	Deps     *[]string `hcl:"deps"`
+	Remain   hcl.Body  `hcl:",remain"`
 }
 
 func (j JobPartial) GetDeps(p *Parser, templates []JobPartial, jobIsTemplate bool) ([]string, error) {
@@ -373,7 +374,7 @@ func (j JobPartial) GetDeps(p *Parser, templates []JobPartial, jobIsTemplate boo
 			}
 
 			depName, ok := variable[1].(hcl.TraverseAttr)
-			if ! ok {
+			if !ok {
 				continue
 			}
 
@@ -382,7 +383,7 @@ func (j JobPartial) GetDeps(p *Parser, templates []JobPartial, jobIsTemplate boo
 	}
 
 	template, err := p.TemplateForJob(&job.Job{
-		Name: j.Name,
+		Name:     j.Name,
 		Template: j.Template,
 	}, templates, jobIsTemplate)
 	if err != nil {
@@ -404,7 +405,7 @@ func (j JobPartial) GetDeps(p *Parser, templates []JobPartial, jobIsTemplate boo
 func (p *Parser) DecodeTemplates() ([]JobPartial, error) {
 	load := struct {
 		Templates []JobPartial `hcl:"template,block"`
-		Remain hcl.Body `hcl:",remain"`
+		Remain    hcl.Body     `hcl:",remain"`
 	}{}
 
 	if err := p.DecodeBody(&load); err != nil {
@@ -414,11 +415,10 @@ func (p *Parser) DecodeTemplates() ([]JobPartial, error) {
 	return load.Templates, nil
 }
 
-
 func (p *Parser) DecodeSCMs() ([]*scm.SCM, error) {
 	load := struct {
 		Repositories []*scm.SCM `hcl:"repository,block"`
-		Remain hcl.Body `hcl:",remain"`
+		Remain       hcl.Body   `hcl:",remain"`
 	}{}
 
 	if err := p.DecodeBody(&load); err != nil {
@@ -430,8 +430,8 @@ func (p *Parser) DecodeSCMs() ([]*scm.SCM, error) {
 
 func (p *Parser) DecodeCache() (types.CacheConfig, error) {
 	load := struct {
-		Cache *types.CacheConfig `hcl:"cache,block"`
-		Remain hcl.Body `hcl:",remain"`
+		Cache  *types.CacheConfig `hcl:"cache,block"`
+		Remain hcl.Body           `hcl:",remain"`
 	}{}
 
 	if err := p.DecodeBody(&load); err != nil {
@@ -452,7 +452,7 @@ func (p *Parser) DecodeCache() (types.CacheConfig, error) {
 func (p *Parser) DecodeKubernetes() (*kubernetes.Kubernetes, error) {
 	load := struct {
 		Kubernetes *kubernetes.Kubernetes `hcl:"kubernetes,block"`
-		Remain hcl.Body `hcl:",remain"`
+		Remain     hcl.Body               `hcl:",remain"`
 	}{}
 
 	if err := p.DecodeBody(&load); err != nil {
@@ -464,7 +464,7 @@ func (p *Parser) DecodeKubernetes() (*kubernetes.Kubernetes, error) {
 
 func (p *Parser) DecodeEngine() (*string, error) {
 	load := struct {
-		Engine *string `hcl:"engine"`
+		Engine *string  `hcl:"engine"`
 		Remain hcl.Body `hcl:",remain"`
 	}{}
 
@@ -479,7 +479,7 @@ func (p *Parser) TemplateForJob(job *job.Job, templates []JobPartial, jobIsTempl
 	for _, template := range templates {
 		if job.Template != nil && *job.Template == template.Name {
 			return &template, nil
-		} else if job.Template == nil && template.Name == "default" && ! jobIsTemplate {
+		} else if job.Template == nil && template.Name == "default" && !jobIsTemplate {
 			return &template, nil
 		}
 	}
@@ -493,8 +493,8 @@ func (p *Parser) TemplateForJob(job *job.Job, templates []JobPartial, jobIsTempl
 
 func (p *Parser) DecodeJobs(templates []JobPartial) ([]*job.Job, error) {
 	load := struct {
-		Jobs []JobPartial `hcl:"job,block"`
-		Remain hcl.Body `hcl:",remain"`
+		Jobs   []JobPartial `hcl:"job,block"`
+		Remain hcl.Body     `hcl:",remain"`
 	}{}
 
 	if err := p.DecodeBody(&load); err != nil {
@@ -509,7 +509,7 @@ func (p *Parser) DecodeJobs(templates []JobPartial) ([]*job.Job, error) {
 		remains[partialJob.Name] = partialJob.Remain
 
 		j := &job.Job{
-			Name: partialJob.Name,
+			Name:     partialJob.Name,
 			Template: partialJob.Template,
 		}
 
@@ -546,7 +546,7 @@ func (p *Parser) DecodeJobs(templates []JobPartial) ([]*job.Job, error) {
 
 func (p *Parser) setJob(j *job.Job) error {
 	jobMap := map[string]cty.Value{}
-	if ! p.ctx.Variables["jobs"].IsNull() {
+	if !p.ctx.Variables["jobs"].IsNull() {
 		jobMap = p.ctx.Variables["jobs"].AsValueMap()
 	}
 
@@ -591,11 +591,11 @@ func (p *Parser) decodeJob(j *job.Job, body hcl.Body, depth int, templates []Job
 
 	if template != nil {
 		templateJob := job.Job{
-			Name: self.GetName(),
+			Name:     self.GetName(),
 			Template: template.Template,
 		}
 
-		if err := p.decodeJob(&templateJob, template.Remain, depth + 1, templates, true, self); err != nil {
+		if err := p.decodeJob(&templateJob, template.Remain, depth+1, templates, true, self); err != nil {
 			return err
 		}
 
@@ -607,7 +607,7 @@ func (p *Parser) decodeJob(j *job.Job, body hcl.Body, depth int, templates []Job
 	}
 
 	if e.HasErrors() {
-		return p.decodeJob(j, body, depth + 1, templates, jobIsTemplate, self)
+		return p.decodeJob(j, body, depth+1, templates, jobIsTemplate, self)
 	}
 
 	return nil

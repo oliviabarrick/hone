@@ -1,10 +1,11 @@
 package config
 
 import (
-	"github.com/stretchr/testify/assert"
-	"testing"
 	"os"
 	"sort"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func sorted(toSort []string) []string {
@@ -255,7 +256,7 @@ secrets = [
 	secretsMap, err := parser.DecodeSecrets()
 	assert.Nil(t, err)
 
-	assert.Equal(t, secretsMap, map[string]string {
+	assert.Equal(t, secretsMap, map[string]string{
 		"MY_SECRET": "hello",
 	})
 }
@@ -585,8 +586,8 @@ job "moon" {
 	assert.Equal(t, 1, len(jobs))
 
 	assert.Equal(t, map[string]string{
-		"HI": "WOW",
-		"TEST": "123",
+		"HI":    "WOW",
+		"TEST":  "123",
 		"HELLO": "moon",
 	}, jobs[0].GetEnv())
 }

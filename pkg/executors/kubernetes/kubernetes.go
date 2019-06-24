@@ -5,27 +5,28 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/job"
 	"github.com/justinbarrick/hone/pkg/logger"
 	"github.com/justinbarrick/hone/pkg/storage"
-	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 type Kubernetes struct {
-	Namespace  *string `hcl:"namespace"`
-	Cache      cache.Cache
-	cacheKey   string
-	pod        string
-	watchCh    <-chan watch.Event
-	clientset  *kubernetes.Clientset
+	Namespace *string `hcl:"namespace"`
+	Cache     cache.Cache
+	cacheKey  string
+	pod       string
+	watchCh   <-chan watch.Event
+	clientset *kubernetes.Clientset
 }
 
 func (k *Kubernetes) Init() error {
@@ -221,7 +222,7 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
-	for key, _ := range cacheEnv {
+	for key := range cacheEnv {
 		env = append(env, corev1.EnvVar{
 			Name: key,
 			ValueFrom: &corev1.EnvVarSource{
@@ -266,12 +267,12 @@ func (k *Kubernetes) Start(ctx context.Context, j *job.Job) error {
 					Name:            "cache-shim",
 					Image:           "justinbarrick/cache-shim",
 					ImagePullPolicy: "Always",
-					Command:         []string{
+					Command: []string{
 						"/bin/sh", "-c",
 						"cp /cache-shim /build && cp /etc/ssl/certs/ca-certificates.crt /build/.hone-ca-certificates.crt",
 					},
-					WorkingDir:      filepath.Join("/build", j.GetWorkdir()),
-					Env:             env,
+					WorkingDir: filepath.Join("/build", j.GetWorkdir()),
+					Env:        env,
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "share",

@@ -3,13 +3,12 @@ package git
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"net/url"
-	"strings"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
-	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
@@ -72,7 +71,7 @@ func (r Repository) Tag() (string, error) {
 	}
 
 	tag := ""
-	err = tags.ForEach(func (ref *plumbing.Reference) error {
+	err = tags.ForEach(func(ref *plumbing.Reference) error {
 		if ref.Hash().String() != commit {
 			return nil
 		}
@@ -117,7 +116,7 @@ func (r Repository) Branch() (string, error) {
 	}
 
 	branch := ""
-	err = branches.ForEach(func (ref *plumbing.Reference) error {
+	err = branches.ForEach(func(ref *plumbing.Reference) error {
 		if ref.Hash().String() != commit {
 			return nil
 		}
@@ -158,7 +157,7 @@ func (r Repository) ParseURL(remote string) (*url.URL, error) {
 	}
 
 	protocolRe := regexp.MustCompile("^[a-z]+://")
-	if ! protocolRe.MatchString(urlStr) {
+	if !protocolRe.MatchString(urlStr) {
 		urlStr = strings.Replace(urlStr, ":", "/", 1)
 		urlStr = fmt.Sprintf("ssh://%s", urlStr)
 	}
@@ -195,10 +194,10 @@ func (r Repository) GitEnv() map[string]string {
 	}
 
 	return map[string]string{
-		"GIT_TAG": tag,
-		"GIT_COMMIT": commit,
+		"GIT_TAG":          tag,
+		"GIT_COMMIT":       commit,
 		"GIT_COMMIT_SHORT": shortCommit,
-		"GIT_BRANCH": branch,
+		"GIT_BRANCH":       branch,
 	}
 }
 
