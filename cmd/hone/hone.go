@@ -1,6 +1,5 @@
 package main
 
-
 import (
 	"github.com/justinbarrick/hone/pkg/cache"
 	"github.com/justinbarrick/hone/pkg/config"
@@ -19,7 +18,6 @@ import (
 	"os"
 	"path/filepath"
 )
-
 
 func main() {
 	honePath := "Honefile"
