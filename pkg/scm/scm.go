@@ -14,7 +14,9 @@ import (
 	"github.com/justinbarrick/hone/pkg/logger"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -117,6 +119,13 @@ func (s *SCM) GetRepo() string {
 }
 
 func (s *SCM) Init(ctx context.Context) (err error) {
+	if os.Getenv("REPO_OWNER") != "" && os.Getenv("REPO_NAME") != "" {
+		repo := fmt.Sprintf("%s/%s", os.Getenv("REPO_OWNER"), os.Getenv("REPO_NAME"))
+		provider := ProviderGithub
+		s.Repo = &repo
+		s.Provider = &provider
+	}
+
 	repo, err := git.NewRepository()
 	if err != nil {
 		return err
