@@ -38,17 +38,18 @@ func main() {
 		os.Unsetenv("DOCKER_REGISTRY")
 		os.Unsetenv("DOCKER_USER")
 		os.Unsetenv("DOCKER_PASS")
+		os.Setenv("DOCKER_CONFIG", "/kaniko/.docker/")
 
 		config.Auths[fmt.Sprintf("https://%s/v1/", registry)] = DockerAuth{
 			Auth: token,
 		}
 
-		err := os.MkdirAll("/root/.docker", 0600)
+		err := os.MkdirAll("/kaniko/.docker", 0600)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		cfgFile, err := os.OpenFile("/root/.docker/config.json", os.O_RDWR|os.O_CREATE, 0600)
+		cfgFile, err := os.OpenFile("/kaniko/.docker/config.json", os.O_RDWR|os.O_CREATE, 0600)
 		if err != nil {
 			log.Fatal(err)
 		}
